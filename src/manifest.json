@@ -1,0 +1,14 @@
+{
+    "requires": {
+        "cockpit": "137"
+    },
+
+    "tools": {
+        "index": {
+            "label": "HP Smart Storage",
+            "keywords": [
+                { "matches": ["raid", "ssacli", "smart array", "storage"] }
+            ]
+        }
+    }
+}

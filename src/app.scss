@@ -1,0 +1,110 @@
+@use "page.scss";
+
+.pf-v6-u-color-200 {
+    color: var(--pf-v6-global--Color--200);
+}
+
+.pf-v6-u-font-size-sm {
+    font-size: var(--pf-v6-global--FontSize--sm);
+}
+
+// Keep DescriptionList terms on a single line so labels like
+// "Controller Status" / "Firmware Version" don't wrap awkwardly.
+.pf-v6-c-description-list .pf-v6-c-description-list__term {
+    white-space: nowrap;
+}
+
+// Give the controller detail header room for title + status + actions on one row.
+.hpssa-detail-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--pf-v6-global--spacer--md);
+    margin-block: var(--pf-v6-global--spacer--md);
+
+    .hpssa-detail-header__title {
+        margin: 0;
+    }
+
+    .hpssa-detail-header__status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--pf-v6-global--spacer--sm);
+        align-items: center;
+    }
+
+    .hpssa-detail-header__actions {
+        margin-inline-start: auto;
+    }
+}
+
+// Expandable physical-drive table
+.hpssa-toggle-cell {
+    width: 1.5rem;
+    padding-inline-end: 0;
+}
+
+.hpssa-pd-details-row > td {
+    background-color: var(--pf-v6-global--BackgroundColor--200);
+}
+
+.hpssa-pd-details {
+    padding-block: var(--pf-v6-global--spacer--sm);
+}
+
+.hpssa-array-header {
+    width: 100%;
+}
+
+.hpssa-row-actions {
+    width: 1.5rem;
+    text-align: end;
+}
+
+// Settings page (Cockpit-style: stacked label / value / description)
+.hpssa-settings {
+    .hpssa-setting-row {
+        padding-block: var(--pf-v6-global--spacer--md);
+        border-block-end: 1px solid var(--pf-v6-global--BorderColor--100);
+    }
+
+    .hpssa-setting-row:last-child {
+        border-block-end: 0;
+    }
+
+    .hpssa-setting-row__label {
+        font-weight: var(--pf-v6-global--FontWeight--bold);
+        font-size: var(--pf-v6-global--FontSize--md);
+    }
+
+    .hpssa-setting-row__value {
+        font-family: var(--pf-v6-global--FontFamily--monospace);
+        color: var(--pf-v6-global--Color--100);
+        margin-block-start: var(--pf-v6-global--spacer--xs);
+    }
+
+    .hpssa-setting-row__desc {
+        color: var(--pf-v6-global--Color--200);
+        font-size: var(--pf-v6-global--FontSize--sm);
+        margin-block-start: var(--pf-v6-global--spacer--xs);
+        max-width: 64ch;
+    }
+}
+
+// Command log
+.hpssa-command-log {
+    .hpssa-log-entry {
+        border-inline-start: 3px solid var(--pf-v6-global--BorderColor--100);
+        padding-inline-start: var(--pf-v6-global--spacer--md);
+    }
+
+    .hpssa-log-entry__meta {
+        margin-block-end: var(--pf-v6-global--spacer--xs);
+    }
+
+    .hpssa-log-entry__time {
+        font-family: var(--pf-v6-global--FontFamily--monospace);
+        color: var(--pf-v6-global--Color--200);
+        font-size: var(--pf-v6-global--FontSize--sm);
+    }
+}
