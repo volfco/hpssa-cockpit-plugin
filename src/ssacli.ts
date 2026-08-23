@@ -34,7 +34,7 @@ export function parseControllerList(output: string): Controller[] {
 
     for (const line of lines) {
         const trimmed = line.trim();
-        const match = trimmed.match(/^(.+?)\s+in\s+Slot\s+(\d+)(?:\s+\((\w+)\))?\s*(?:\(sn:\s*(\S+)\))?/);
+        const match = trimmed.match(/^(.+?)\s+in\s+Slot\s+(\d+)(?:\s+\(([^)]+)\))?\s*(?:\(sn:\s*(\S+)\))?/);
         if (match) {
             controllers.push({
                 name: match[1].trim(),
@@ -348,14 +348,14 @@ export function parseEnclosures(output: string, controllerSlot: string): Enclosu
         if (trimmed.match(/Enclosure.*at Port/) && indent <= 3) {
             saveCurrent();
             collectingDrives = false;
-            const nameMatch = trimmed.match(/^(.+?)\s+at\s+Port\s+(\S+),\s*Box\s+(\d+)\s+\(Index\s+(\d+)\),\s*(\S+)/);
+            const nameMatch = trimmed.match(/^(.+?)\s+at\s+Port\s+(\S+),\s*Box\s+(\d+)\s+\(Index\s+(\d+)\),\s*(.+)$/);
             if (nameMatch) {
                 currentEnc = {
                     name: nameMatch[1].trim(),
                     port: nameMatch[2],
                     box: nameMatch[3],
                     boxIndex: nameMatch[4],
-                    status: nameMatch[5],
+                    status: nameMatch[5].trim(),
                     type: trimmed.includes('Internal') ? 'Internal' : 'External',
                     properties: {},
                     physicalDrives: [],

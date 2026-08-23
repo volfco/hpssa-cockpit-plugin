@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="addon">
+  <id>org.cockpit_project.hpssa</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>HP Smart Storage</name>
+  <summary>Manage HPE Smart Array storage controllers</summary>
+  <description>
+    <p>
+      Cockpit plugin for managing HPE Smart Array (ssacli) RAID
+      controllers, arrays, logical and physical drives, and enclosures.
+    </p>
+  </description>
+  <extends>org.cockpit_project.cockpit</extends>
+  <launchable type="cockpit-manifest">hpssa</launchable>
+  <url type="homepage">https://github.com/OWNER/hpssa-cockpit-plugin</url>
+  <url type="bugtracker">https://github.com/OWNER/hpssa-cockpit-plugin/issues</url>
+  <update_contact>cockpit-devel_AT_lists.fedorahosted.org</update_contact>
+  <developer id="org.cockpit-project">
+    <name>Cockpit Project</name>
+  </developer>
+</component>

@@ -1,0 +1,5 @@
+cockpit-hpssa (0-unreleased) UNRELEASED; urgency=medium
+
+  * CI-built package from https://github.com/OWNER/hpssa-cockpit-plugin.
+
+ -- CI <ci@example.invalid>  Thu, 01 Jan 1970 00:00:00 +0000

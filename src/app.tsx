@@ -5,13 +5,14 @@ import { DescriptionList, DescriptionListGroup, DescriptionListTerm, Description
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { LabelGroup } from "@patternfly/react-core/dist/esm/components/Label/LabelGroup.js";
 import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
+import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
 import { Gallery } from "@patternfly/react-core/dist/esm/layouts/Gallery/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Stack, StackItem } from "@patternfly/react-core/dist/esm/layouts/Stack/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Spinner } from "@patternfly/react-core/dist/esm/components/Spinner/index.js";
-import { Nav, NavList, NavItem } from "@patternfly/react-core/dist/esm/components/Nav/index.js";
-import { Page, PageSection, PageSidebar, PageSidebarBody } from "@patternfly/react-core/dist/esm/components/Page/index.js";
+import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Page/index.js";
+import { Nav, NavItem, NavList } from "@patternfly/react-core/dist/esm/components/Nav/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Badge } from "@patternfly/react-core/dist/esm/components/Badge/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
@@ -21,6 +22,8 @@ import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/compone
 import AngleDownIcon from "@patternfly/react-icons/dist/esm/icons/angle-down-icon.js";
 import AngleRightIcon from "@patternfly/react-icons/dist/esm/icons/angle-right-icon.js";
 import HddIcon from "@patternfly/react-icons/dist/esm/icons/hdd-icon.js";
+import SearchIcon from "@patternfly/react-icons/dist/esm/icons/search-icon.js";
+import CubeIcon from "@patternfly/react-icons/dist/esm/icons/cube-icon.js";
 import ServerIcon from "@patternfly/react-icons/dist/esm/icons/server-icon.js";
 import StorageDomainIcon from "@patternfly/react-icons/dist/esm/icons/storage-domain-icon.js";
 import ContainerNodeIcon from "@patternfly/react-icons/dist/esm/icons/container-node-icon.js";
@@ -32,7 +35,7 @@ import SyncIcon from "@patternfly/react-icons/dist/esm/icons/sync-icon.js";
 
 import cockpit from 'cockpit';
 import type { SystemOverview, Controller, Enclosure, LogicalDrive, PhysicalDrive, ViewState, KeyValue, Sensor } from './types';
-import { fetchOverview, rescanController, rescanAll, runSsacliCommandLine, subscribeCommandLog, getCommandLog } from './service';
+import { fetchOverview, rescanController, rescanAll, runSsacliCommandLine, getCommandLog, subscribeCommandLog } from './service';
 import {
     ActionMenu, useDialogs,
     controllerActions, controllerSettingDefs,
@@ -50,7 +53,7 @@ function statusColor(status: string): PFColor {
     const s = status.toLowerCase();
     if (s === 'ok' || s === 'enabled' || s === 'redundant' || s === 'completed') return 'green';
     if (s === 'degraded' || s === 'rebuilding' || s === 'expanding' || s.includes('progress')) return 'orange';
-    if (s === 'failed' || s === 'error' || s === 'not configured') return 'red';
+    if (s.startsWith('not ok') || s.includes('critical') || s === 'failed' || s === 'error' || s === 'not configured') return 'red';
     return 'grey';
 }
 
@@ -59,7 +62,7 @@ function statusIcon(status: string) {
     if (s === 'ok' || s === 'enabled' || s === 'redundant') return <OkIcon />;
     if (s.includes('progress') || s === 'rebuilding') return <InProgressIcon />;
     if (s === 'degraded' || s === 'expanding') return <WarningTriangleIcon />;
-    if (s === 'failed' || s === 'error') return <ErrorCircleOIcon />;
+    if (s.startsWith('not ok') || s.includes('critical') || s === 'failed' || s === 'error') return <ErrorCircleOIcon />;
     return undefined;
 }
 
@@ -75,16 +78,33 @@ function StatusLabel({ status }: { status: string }) {
     );
 }
 
+// Screen-reader-only caption for the hand-built PF tables (no
+// @patternfly/react-table dependency available).
+function TableCaption({ text }: { text: string }) {
+    return <caption className="pf-v6-u-screen-reader">{text}</caption>;
+}
+
+// Enter/Space activation for clickable table rows.
+function rowKeyboardSelect(onActivate: () => void) {
+    return (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onActivate();
+        }
+    };
+}
+
 function PropertyTable({ properties }: { properties: KeyValue }) {
     const entries = Object.entries(properties);
     if (entries.length === 0) return null;
 
     return (
-        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md">
+        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Properties")}>
+            <TableCaption text={_("Properties")} />
             <tbody className="pf-v6-c-table__tbody">
                 {entries.map(([key, value]) => (
                     <tr className="pf-v6-c-table__tr" key={key}>
-                        <td className="pf-v6-c-table__td" style={{ fontWeight: 'var(--pf-v6-global--FontWeight--bold)', width: '40%' }}>{key}</td>
+                        <td className="pf-v6-c-table__td"><strong>{key}</strong></td>
                         <td className="pf-v6-c-table__td">{value}</td>
                     </tr>
                 ))}
@@ -99,13 +119,14 @@ function SensorTable({ sensors }: { sensors: Sensor[] }) {
     return (
         <>
             <Title headingLevel="h4" size="md" className="pf-v6-u-mt-md">{_("Sensors")}</Title>
-            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md">
+            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Sensors")}>
+                <TableCaption text={_("Sensors")} />
                 <thead className="pf-v6-c-table__thead">
                     <tr className="pf-v6-c-table__tr">
-                        <th className="pf-v6-c-table__th">{_("ID")}</th>
-                        <th className="pf-v6-c-table__th">{_("Location")}</th>
-                        <th className="pf-v6-c-table__th">{_("Current")}</th>
-                        <th className="pf-v6-c-table__th">{_("Max")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Current")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Max")}</th>
                     </tr>
                 </thead>
                 <tbody className="pf-v6-c-table__tbody">
@@ -123,19 +144,24 @@ function SensorTable({ sensors }: { sensors: Sensor[] }) {
     );
 }
 
-function StatusOverviewTable({ controllers, overview }: { controllers: Controller[]; overview: SystemOverview }) {
+function StatusOverviewTable({ controllers, overview, onSelect }: {
+    controllers: Controller[];
+    overview: SystemOverview;
+    onSelect: (slot: string) => void;
+}) {
     return (
-        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md">
+        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Quick status")}>
+            <TableCaption text={_("Quick status")} />
             <thead className="pf-v6-c-table__thead">
                 <tr className="pf-v6-c-table__tr">
-                    <th className="pf-v6-c-table__th">{_("Controller")}</th>
-                    <th className="pf-v6-c-table__th">{_("Controller Status")}</th>
-                    <th className="pf-v6-c-table__th">{_("Cache")}</th>
-                    <th className="pf-v6-c-table__th">{_("Battery")}</th>
-                    <th className="pf-v6-c-table__th">{_("Arrays")}</th>
-                    <th className="pf-v6-c-table__th">{_("Logical Drives")}</th>
-                    <th className="pf-v6-c-table__th">{_("Physical Drives")}</th>
-                    <th className="pf-v6-c-table__th">{_("Enclosures")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Controller")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Controller Status")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Cache")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Battery")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Arrays")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Logical Drives")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Physical Drives")}</th>
+                    <th className="pf-v6-c-table__th" scope="col">{_("Enclosures")}</th>
                 </tr>
             </thead>
             <tbody className="pf-v6-c-table__tbody">
@@ -145,7 +171,14 @@ function StatusOverviewTable({ controllers, overview }: { controllers: Controlle
                     const pds = overview.physicalDrives.filter(pd => pd.controllerSlot === c.slot);
                     const encs = overview.enclosures.filter(e => e.controllerSlot === c.slot);
                     return (
-                        <tr className="pf-v6-c-table__tr pf-m-clickable" key={c.slot}>
+                        <tr
+                            className="pf-v6-c-table__tr pf-m-clickable"
+                            key={c.slot}
+                            tabIndex={0}
+                            aria-label={cockpit.format(_("Open controller $0"), c.name)}
+                            onClick={() => onSelect(c.slot)}
+                            onKeyDown={rowKeyboardSelect(() => onSelect(c.slot))}
+                        >
                             <td className="pf-v6-c-table__td">{c.name} (Slot {c.slot})</td>
                             <td className="pf-v6-c-table__td"><StatusLabel status={c.status} /></td>
                             <td className="pf-v6-c-table__td"><StatusLabel status={c.cacheStatus} /></td>
@@ -216,19 +249,20 @@ function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reloa
 
     return (
         <>
-            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md pf-m-expandable">
+            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md pf-m-expandable" aria-label={_("Physical drives")}>
+                <TableCaption text={_("Physical drives")} />
                 <thead className="pf-v6-c-table__thead">
                     <tr className="pf-v6-c-table__tr">
-                        <th className="pf-v6-c-table__th" />
-                        <th className="pf-v6-c-table__th">{_("ID")}</th>
-                        <th className="pf-v6-c-table__th">{_("Status")}</th>
-                        <th className="pf-v6-c-table__th">{_("Type")}</th>
-                        <th className="pf-v6-c-table__th">{_("Size")}</th>
-                        <th className="pf-v6-c-table__th">{_("Model")}</th>
-                        <th className="pf-v6-c-table__th">{_("Serial")}</th>
-                        <th className="pf-v6-c-table__th">{_("Location")}</th>
-                        <th className="pf-v6-c-table__th">{_("Temp")}</th>
-                        <th className="pf-v6-c-table__th" />
+                        <th className="pf-v6-c-table__th" scope="col" />
+                        <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Status")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Type")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Size")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Model")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Serial")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Temp")}</th>
+                        <th className="pf-v6-c-table__th" scope="col" />
                     </tr>
                 </thead>
                 {drives.map(pd => {
@@ -239,7 +273,7 @@ function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reloa
                             className={`pf-v6-c-table__tbody ${isOpen ? 'pf-m-expanded' : ''}`}
                             key={key}
                         >
-                            <tr className="pf-v6-c-table__tr pf-m-clickable" onClick={() => toggle(key)}>
+                            <tr className="pf-v6-c-table__tr pf-m-clickable">
                                 <td className="pf-v6-c-table__td hpssa-toggle-cell">
                                     <Button
                                         variant="plain"
@@ -262,7 +296,7 @@ function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reloa
                                 <td className="pf-v6-c-table__td">{pd.serialNumber}</td>
                                 <td className="pf-v6-c-table__td">{pd.port}:{pd.box}:{pd.bay}</td>
                                 <td className="pf-v6-c-table__td">{pd.temperature ? `${pd.temperature}°C` : '-'}</td>
-                                <td className="pf-v6-c-table__td hpssa-row-actions" onClick={e => e.stopPropagation()}>
+                                <td className="pf-v6-c-table__td hpssa-row-actions">
                                     <ActionMenu items={pdActions(pd, dialogs)} />
                                 </td>
                             </tr>
@@ -593,21 +627,26 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
 
     return (
         <>
-            <Breadcrumb>
-                <BreadcrumbItem onClick={onBack} to="#">{_("Controllers")}</BreadcrumbItem>
+            <Breadcrumb className="pf-v6-u-mb-md">
+                <BreadcrumbItem onClick={onBack} to="#">{_("Dashboard")}</BreadcrumbItem>
                 <BreadcrumbItem isActive>{controller.name}</BreadcrumbItem>
             </Breadcrumb>
 
-            <div className="hpssa-detail-header">
-                <Title headingLevel="h2" size="xl" className="hpssa-detail-header__title">
-                    {controller.name}
-                </Title>
-                <div className="hpssa-detail-header__status">
-                    <StatusLabel status={controller.status} />
-                    {controller.cacheStatus && <StatusLabel status={controller.cacheStatus} />}
-                    {controller.batteryStatus && <StatusLabel status={controller.batteryStatus} />}
-                </div>
-                <div className="hpssa-detail-header__actions">
+            <Flex
+                alignItems={{ default: 'alignItemsCenter' }}
+                spaceItems={{ default: 'spaceItemsMd' }}
+                flexWrap={{ default: 'wrap' }}
+                className="pf-v6-u-mb-md"
+            >
+                <Title headingLevel="h2" size="xl">{controller.name}</Title>
+                <FlexItem>
+                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                        <StatusLabel status={controller.status} />
+                        {controller.cacheStatus && <StatusLabel status={controller.cacheStatus} />}
+                        {controller.batteryStatus && <StatusLabel status={controller.batteryStatus} />}
+                    </Flex>
+                </FlexItem>
+                <FlexItem align={{ default: 'alignRight' }}>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                         <Button
                             variant="secondary"
@@ -622,8 +661,8 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
                         </Button>
                         <ActionMenu items={controllerActions(controller, dialogs)} />
                     </Flex>
-                </div>
-            </div>
+                </FlexItem>
+            </Flex>
 
             <Tabs activeKey={activeTab} onSelect={(_event, key) => setActiveTab(key)}>
                 <Tab eventKey={0} title={<TabTitleText>{_("Overview")}</TabTitleText>}>
@@ -807,7 +846,6 @@ export const Application = () => {
     const [error, setError] = React.useState<string | null>(null);
     const [view, setView] = React.useState<ViewState>({ level: 'dashboard' });
     const [loading, setLoading] = React.useState(true);
-    const [navActive, setNavActive] = React.useState<string>('dashboard');
     const [rawOpen, setRawOpen] = React.useState(false);
 
     const loadData = React.useCallback(async () => {
@@ -827,169 +865,206 @@ export const Application = () => {
         loadData();
     }, [loadData]);
 
-    const navSelect = (result: { itemId: string | number }) => {
-        const id = result.itemId as string;
-        setNavActive(id);
-        if (id === 'dashboard') {
-            setView({ level: 'dashboard' });
-        } else if (id === 'commandlog') {
-            setView({ level: 'commandlog' });
-        } else if (id.startsWith('ctrl-')) {
-            const slot = id.substring(5);
-            setView({ level: 'controller', controllerSlot: slot });
-        }
+    const openController = (slot: string) => setView({ level: 'controller', controllerSlot: slot });
+
+    const selectView = (id: string) => {
+        if (id === 'dashboard') setView({ level: 'dashboard' });
+        else if (id === 'commandlog') setView({ level: 'commandlog' });
+        else if (id.startsWith('ctrl-')) openController(id.substring(5));
     };
 
-    // Re-render nav badge when log changes so the count stays current.
+    // Re-render the command-log tab badge when the log changes.
     const [logCount, setLogCount] = React.useState(getCommandLog().length);
     React.useEffect(() => subscribeCommandLog(() => setLogCount(getCommandLog().length)), []);
 
-    const sidebarNav = (
-        <Nav onSelect={(_event, result) => navSelect(result)}>
-            <NavList>
-                <NavItem itemId="dashboard" isActive={navActive === 'dashboard'}>
-                    {_("Dashboard")}
-                </NavItem>
-                {overview && overview.controllers.map(c => (
-                    <NavItem
-                        key={c.slot}
-                        itemId={`ctrl-${c.slot}`}
-                        isActive={navActive === `ctrl-${c.slot}`}
-                    >
-                        <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                            <ServerIcon />
-                            <span>{c.name}</span>
-                            <StatusLabel status={c.status} />
-                        </Flex>
-                    </NavItem>
-                ))}
-                <NavItem itemId="commandlog" isActive={navActive === 'commandlog'}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                        <span>{_("Command log")}</span>
-                        {logCount > 0 && <Badge isRead>{logCount}</Badge>}
-                    </Flex>
-                </NavItem>
-            </NavList>
-        </Nav>
-    );
-
-    const sidebar = (
-        <PageSidebar>
-            <PageSidebarBody>{sidebarNav}</PageSidebarBody>
-        </PageSidebar>
-    );
+    const activeTab =
+        view.level === 'controller'
+            ? `ctrl-${view.controllerSlot}`
+            : view.level === 'commandlog'
+                ? 'commandlog'
+                : 'dashboard';
 
     const selectedController = overview?.controllers.find(c => c.slot === view.controllerSlot);
 
+    let content: React.ReactNode;
+    if (loading) {
+        content = (
+            <PageSection
+                isFilled
+                className="pf-v6-u-display-flex pf-v6-u-align-items-center pf-v6-u-justify-content-center"
+            >
+                <Spinner size="xl" />
+            </PageSection>
+        );
+    } else if (error) {
+        content = (
+            <PageSection>
+                <Alert
+                    variant="danger"
+                    title={_("Error loading storage information")}
+                    isInline
+                    actionLinks={
+                        <Button variant="link" onClick={loadData} icon={<SyncIcon />}>
+                            {_("Retry")}
+                        </Button>
+                    }
+                >
+                    {error}
+                </Alert>
+            </PageSection>
+        );
+    } else if (!overview) {
+        content = null;
+    } else if (view.level === 'controller' && selectedController) {
+        content = (
+            <ControllerDetail
+                overview={overview}
+                controller={selectedController}
+                onBack={() => setView({ level: 'dashboard' })}
+                reload={loadData}
+            />
+        );
+    } else if (view.level === 'commandlog') {
+        content = (
+            <PageSection>
+                <CommandLog />
+            </PageSection>
+        );
+    } else {
+        content = (
+            <PageSection>
+                {overview.controllers.length === 0
+                    ? (
+                        <EmptyState titleText={_("No HP Smart Array controllers detected.")} icon={CubeIcon} headingLevel="h2">
+                            <EmptyStateBody>
+                                {_("Ensure ssacli is installed and the system has compatible HP storage hardware.")}
+                            </EmptyStateBody>
+                            <Button variant="primary" icon={<SyncIcon />} onClick={loadData}>
+                                {_("Refresh")}
+                            </Button>
+                        </EmptyState>
+                    )
+                    : (
+                        <Stack hasGutter>
+                            <StackItem>
+                                <Gallery hasGutter>
+                                    {overview.controllers.map(c => (
+                                        <ControllerCard
+                                            key={c.slot}
+                                            controller={c}
+                                            onSelect={() => openController(c.slot)}
+                                        />
+                                    ))}
+                                </Gallery>
+                            </StackItem>
+
+                            {[...new Set(overview.enclosures.map(e => e.controllerSlot))].map(slot => {
+                                const ctrl = overview.controllers.find(c => c.slot === slot);
+                                if (!ctrl) return null;
+                                return (
+                                    <StackItem key={slot}>
+                                        <Title headingLevel="h3" size="md" className="pf-v6-u-mb-sm">
+                                            {cockpit.format(_("Enclosures — $0"), ctrl.name)}
+                                        </Title>
+                                        <Gallery hasGutter>
+                                            {overview.enclosures
+                                                    .filter(e => e.controllerSlot === slot)
+                                                    .map((enc, idx) => (
+                                                        <EnclosureCard key={idx} enclosure={enc} />
+                                                    ))}
+                                        </Gallery>
+                                    </StackItem>
+                                );
+                            })}
+
+                            <Divider className="pf-v6-u-my-lg" />
+
+                            <StackItem>
+                                <Title headingLevel="h2" size="xl" className="pf-v6-u-mb-md">{_("Quick Status")}</Title>
+                                <StatusOverviewTable
+                                    controllers={overview.controllers}
+                                    overview={overview}
+                                    onSelect={openController}
+                                />
+                            </StackItem>
+                        </Stack>
+                    )}
+            </PageSection>
+        );
+    }
+
     return (
-        <Page sidebar={sidebar} isManagedSidebar>
+        <Page>
+            {/* Compact plugin header: this page renders inside the Cockpit shell,
+                so no sidebar/masthead chrome of its own. */}
             <PageSection variant="secondary">
-                <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+                <Flex
+                    justifyContent={{ default: 'justifyContentSpaceBetween' }}
+                    alignItems={{ default: 'alignItemsCenter' }}
+                    flexWrap={{ default: 'wrap' }}
+                >
                     <FlexItem>
-                        <Title headingLevel="h1" size="2xl">
-                            {_("HP Smart Storage")}
-                        </Title>
+                        <Title headingLevel="h1" size="xl">{_("HP Smart Storage")}</Title>
                     </FlexItem>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                        <Button
-                            variant="secondary"
-                            icon={<SyncIcon />}
-                            size="sm"
-                            onClick={async () => { await rescanAll(); loadData() }}
-                        >
-                            {_("Rescan all")}
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => setRawOpen(true)}>
-                            {_("Run command…")}
-                        </Button>
-                    </Flex>
+                    <FlexItem>
+                        <Flex spaceItems={{ default: 'spaceItemsSm' }}>
+                            <Button
+                                variant="secondary"
+                                icon={<SyncIcon />}
+                                size="sm"
+                                onClick={async () => { await rescanAll(); loadData() }}
+                            >
+                                {_("Rescan all")}
+                            </Button>
+                            <Button variant="secondary" size="sm" icon={<SearchIcon />} onClick={() => setRawOpen(true)}>
+                                {_("Run command…")}
+                            </Button>
+                        </Flex>
+                    </FlexItem>
                 </Flex>
             </PageSection>
+
+            {!loading && !error && overview && (
+                <PageSection type="tabs" padding={{ default: 'noPadding' }}>
+                    <Nav
+                        variant="horizontal-subnav"
+                        aria-label={_("Storage navigation")}
+                        onSelect={(_event, result) => selectView(String(result.itemId))}
+                    >
+                        <NavList>
+                            <NavItem itemId="dashboard" isActive={activeTab === 'dashboard'}>
+                                {_("Dashboard")}
+                            </NavItem>
+                            {overview.controllers.map(c => (
+                                <NavItem
+                                    key={c.slot}
+                                    itemId={`ctrl-${c.slot}`}
+                                    isActive={activeTab === `ctrl-${c.slot}`}
+                                >
+                                    <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
+                                        <span>{c.name}</span>
+                                        <StatusLabel status={c.status} />
+                                    </Flex>
+                                </NavItem>
+                            ))}
+                            <NavItem itemId="commandlog" isActive={activeTab === 'commandlog'}>
+                                <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
+                                    <span>{_("Command log")}</span>
+                                    {logCount > 0 && <Badge isRead>{logCount}</Badge>}
+                                </Flex>
+                            </NavItem>
+                        </NavList>
+                    </Nav>
+                </PageSection>
+            )}
+
+            {content}
+
             <RawCommandDialog
                 isOpen={rawOpen}
                 onClose={() => { setRawOpen(false); loadData() }}
                 onRun={runSsacliCommandLine}
             />
-            <PageSection>
-                {loading && (
-                    <Flex justifyContent={{ default: 'justifyContentCenter' }} className="pf-v6-u-p-xl">
-                        <Spinner size="xl" />
-                    </Flex>
-                )}
-
-                {error && (
-                    <Alert
-                        variant="danger"
-                        title={_("Error loading storage information")}
-                        isInline
-                        actionLinks={
-                            <Button variant="link" onClick={loadData} icon={<SyncIcon />}>
-                                {_("Retry")}
-                            </Button>
-                        }
-                    >
-                        {error}
-                    </Alert>
-                )}
-
-                {!loading && !error && overview && view.level === 'dashboard' && (
-                    <>
-                        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} className="pf-v6-u-mb-md">
-                            <Title headingLevel="h2" size="xl">{_("Storage Controllers")}</Title>
-                            <Button variant="secondary" icon={<SyncIcon />} onClick={loadData}>
-                                {_("Refresh")}
-                            </Button>
-                        </Flex>
-                        {overview.controllers.length === 0
-                            ? (
-                                <Alert variant="warning" title={_("No HP Smart Array controllers detected.")} isInline>
-                                    {_("Ensure ssacli is installed and the system has compatible HP storage hardware.")}
-                                </Alert>
-                            )
-                            : (
-                                <Stack hasGutter>
-                                    {overview.controllers.map(c => (
-                                        <StackItem key={c.slot}>
-                                            <ControllerCard
-                                            controller={c}
-                                            onSelect={() => {
-                                                setView({ level: 'controller', controllerSlot: c.slot });
-                                                setNavActive(`ctrl-${c.slot}`);
-                                            }}
-                                            />
-                                            <Gallery hasGutter className="pf-v6-u-mt-sm pf-v6-u-ml-xl">
-                                                {overview.enclosures
-                                                        .filter(e => e.controllerSlot === c.slot)
-                                                        .map((enc, idx) => (
-                                                            <EnclosureCard key={idx} enclosure={enc} />
-                                                        ))}
-                                            </Gallery>
-                                        </StackItem>
-                                    ))}
-
-                                    <Divider className="pf-v6-u-my-lg" />
-
-                                    <Title headingLevel="h2" size="xl">{_("Quick Status")}</Title>
-                                    <StatusOverviewTable controllers={overview.controllers} overview={overview} />
-                                </Stack>
-                            )}
-                    </>
-                )}
-
-                {!loading && !error && overview && view.level === 'controller' && selectedController && (
-                    <ControllerDetail
-                        overview={overview}
-                        controller={selectedController}
-                        onBack={() => {
-                            setView({ level: 'dashboard' });
-                            setNavActive('dashboard');
-                        }}
-                        reload={loadData}
-                    />
-                )}
-
-                {view.level === 'commandlog' && <CommandLog />}
-            </PageSection>
         </Page>
     );
 };

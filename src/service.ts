@@ -136,6 +136,11 @@ export async function runSsacliCommandLine(cmdline: string): Promise<string> {
 // ---------------------------------------------------------------------------
 
 export const ctrlTarget = (slot: string): string[] => ['controller', `slot=${slot}`];
+// Controllers can also be targeted by serial number or channel name. Typed
+// wrappers use slot= targeting (always known from discovery); serial/ch
+// targets work for every operation via the raw-command dialog.
+export const ctrlSnTarget = (serialNumber: string): string[] => ['controller', `serialnumber=${serialNumber}`];
+export const ctrlChTarget = (ch: string): string[] => ['controller', `ch=${ch}`];
 export const arrayTarget = (slot: string, arrayId: string): string[] =>
     [...ctrlTarget(slot), 'array', arrayId];
 export const ldTarget = (slot: string, ldId: string): string[] =>
@@ -383,6 +388,100 @@ export const deleteController = (slot: string, opts: { forced?: boolean; overrid
 };
 
 // ---------------------------------------------------------------------------
+// Controller mode & advanced settings
+// ---------------------------------------------------------------------------
+
+export const setHbaMode = (slot: string, on: boolean) =>
+    ctrlModify(slot, { hbamode: on ? 'on' : 'off' },
+               `${on ? 'Enable' : 'Disable'} HBA mode on controller slot ${slot} (exposes drives to OS)`);
+export const setRaidMode = (slot: string, on: boolean) =>
+    ctrlModify(slot, { raidmode: on ? 'on' : 'off' },
+               `${on ? 'Enable' : 'Disable'} RAID mode on controller slot ${slot}`);
+export const setPortMode = (slot: string, mode: 'hba' | 'raid' | 'mixed') =>
+    ctrlModify(slot, { portmode: mode },
+               `Set port mode to ${mode} on controller slot ${slot}`);
+export const setLatencyScheduler = (slot: string, level: 'low' | '100' | 'high' | '30' | '10' | 'disable') =>
+    ctrlModify(slot, { latency: level },
+               `Set flexible latency scheduler to ${level} on controller slot ${slot}`);
+export const setMaxReadRequestSize = (slot: string,
+    size: 'default' | 128 | 256 | 512 | 1024 | 2048) =>
+    ctrlModify(slot, { maxreadrequestsize: size },
+               `Set max read request size to ${size} on controller slot ${slot}`);
+export const setI2cAddress = (slot: string, address: string) =>
+    ctrlModify(slot, { i2caddress: address },
+               `Set I2C address to ${address} on controller slot ${slot}`);
+export const setDriverNotify = (slot: string, on: boolean) =>
+    ctrlModify(slot, { drivernotify: on ? 'enable' : 'disable' },
+               `${on ? 'Enable' : 'Disable'} driver rescan notification on controller slot ${slot}`);
+export const setSpareActivationMode = (slot: string, mode: 'failure' | 'predictive') =>
+    ctrlModify(slot, { spareactivationmode: mode },
+               `Set spare activation mode to ${mode} on controller slot ${slot}`);
+
+export const clearNvram = (slot: string, what: 'nvram' | 'logs' | 'all') =>
+    ctrlModify(slot, { clearnvram: what },
+               `Clear NVRAM (${what}) on controller slot ${slot}`);
+
+// Clears RAID configuration data masking drives from the OS (HBA mode). With
+// pdId set, only that drive is cleared; otherwise all drives on the controller.
+export const clearConfigData = (slot: string, pdId?: string) => {
+    const target = pdId ? pdTarget(slot, pdId) : ctrlTarget(slot);
+    return runSsacli([...target, 'modify', 'clearconfigdata'],
+                     `Clear RAID config data on ${pdId ? `drive ${pdId}` : `controller slot ${slot}`}`);
+};
+
+// ---------------------------------------------------------------------------
+// Firmware update
+// ---------------------------------------------------------------------------
+
+export interface FlashParams {
+    file: string;
+    mode?: '5' | '7' | 'E' | 'E+F';
+    transfersize?: number;
+    immediate?: 'enable' | 'disable';
+    forced?: boolean;
+}
+
+function flashArgs(p: FlashParams): string[] {
+    return [
+        ...kv({ file: p.file, mode: p.mode, transfersize: p.transfersize, immediate: p.immediate }),
+        ...(p.forced ? ['forced'] : []),
+    ];
+}
+
+export const flashControllerFirmware = (slot: string, p: FlashParams) =>
+    runSsacli([...ctrlTarget(slot), 'flash', ...flashArgs(p)],
+              `Flash firmware from ${p.file} onto controller slot ${slot}`);
+
+export const flashDriveFirmware = (slot: string, pdId: string, p: FlashParams) =>
+    runSsacli([...pdTarget(slot, pdId), 'flash', ...flashArgs(p)],
+              `Flash firmware from ${p.file} onto drive ${pdId} (slot ${slot})`);
+
+// ---------------------------------------------------------------------------
+// SEP (expander) & backplane targets
+// ---------------------------------------------------------------------------
+
+export const showSepDevices = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'sep', 'all', 'show'],
+              `List SEP devices on controller slot ${slot}`);
+
+export const flashSepFirmware = (slot: string, sepId: string, p: FlashParams) =>
+    runSsacli([...ctrlTarget(slot), 'sep', sepId, 'flash', ...flashArgs(p)],
+              `Flash firmware from ${p.file} onto SEP ${sepId} (slot ${slot})`);
+
+export const setSepConfigurationMode = (slot: string, sepId: string,
+    mode: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7) =>
+    runSsacli([...ctrlTarget(slot), 'sep', sepId, 'modify', `configurationmode=${mode}`],
+              `Set configuration mode ${mode} on SEP ${sepId} (slot ${slot})`);
+
+export const showBackplanes = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'backplane', 'all', 'show'],
+              `List backplanes on controller slot ${slot}`);
+
+export const flashBackplaneFirmware = (slot: string, bpId: string, file: string) =>
+    runSsacli([...ctrlTarget(slot), 'backplane', bpId, 'flash', `file=${file}`],
+              `Flash firmware from ${file} onto backplane ${bpId} (slot ${slot})`);
+
+// ---------------------------------------------------------------------------
 // License keys
 // ---------------------------------------------------------------------------
 
@@ -530,7 +629,7 @@ export const ldSetLed = (slot: string, ldId: string, on: boolean, durationSecond
              `Turn logical drive ${ldId} identify LED ${on ? 'on' : 'off'}${on && durationSeconds ? ` for ${durationSeconds}s` : ''} (slot ${slot})`);
 
 export const ldSetLabel = (slot: string, ldId: string, label: string) =>
-    ldModify(slot, ldId, { logicaldrivelabel: `"${label}"` },
+    ldModify(slot, ldId, { logicaldrivelabel: label },
              `Set label on logical drive ${ldId} to "${label}" (slot ${slot})`);
 
 export const ldResize = (slot: string, ldId: string, size: string | number, forced = false) => {
@@ -564,6 +663,11 @@ export const ldDelete = (slot: string, ldId: string, opts: { forced?: boolean; o
     return runSsacli(args, `Delete logical drive ${ldId} on slot ${slot}`);
 };
 
+// SSD caching write policy — only valid on LDs using SSD caching.
+export const ldSetWritePolicy = (slot: string, ldId: string, policy: 'writethrough' | 'writeback') =>
+    ldModify(slot, ldId, { writepolicy: policy },
+             `Set SSD caching write policy to ${policy} on logical drive ${ldId} (slot ${slot})`);
+
 // ---------------------------------------------------------------------------
 // Physical drive operations
 // ---------------------------------------------------------------------------
@@ -588,6 +692,13 @@ export const pdEnableErasedDrive = (slot: string, pdId: string) =>
     runSsacli([...pdTarget(slot, pdId), 'modify', 'enableeraseddrive'],
               `Mark erased drive ${pdId} as enabled (slot ${slot})`);
 
+// Temporarily fails the drive until a hot-plug event or controller reset.
+export const pdDisable = (slot: string, pdId: string, forced = false) => {
+    const args = [...pdTarget(slot, pdId), 'modify', 'disablepd'];
+    if (forced) args.push('forced');
+    return runSsacli(args, `Disable drive ${pdId} until hot-plug or reset (slot ${slot})`);
+};
+
 // ---------------------------------------------------------------------------
 // Enclosure
 // ---------------------------------------------------------------------------
@@ -595,6 +706,16 @@ export const pdEnableErasedDrive = (slot: string, pdId: string) =>
 export const showEnclosure = (slot: string, encId: string, kind: 'detail' | 'status' = 'detail') =>
     runSsacli([...enclosureTarget(slot, encId), 'show', kind],
               `Show enclosure ${encId} ${kind} on slot ${slot}`);
+
+// Enclosures can be targeted by serial number; ssacli requires a controller
+// qualifier in front (verified against the CLI: bare `enclosure sn=` errors).
+export const enclosureSnTarget = (slot: string, serialNumber: string): string[] =>
+    [...ctrlTarget(slot), 'enclosure', `serialnumber=${serialNumber}`];
+
+export const showEnclosureBySerial = (slot: string, serialNumber: string,
+    kind: 'detail' | 'status' = 'detail') =>
+    runSsacli([...enclosureSnTarget(slot, serialNumber), 'show', kind],
+              `Show enclosure sn ${serialNumber} ${kind} on slot ${slot}`);
 
 // ---------------------------------------------------------------------------
 // Misc show / diag
@@ -604,13 +725,45 @@ export const showDebugToken = (slot: string) =>
     runSsacli([...ctrlTarget(slot), 'show', 'debugtoken'],
               `Read debug token on controller slot ${slot}`);
 
+export const showOutOfBand = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'show', 'outofband'],
+              `Read out-of-band interface properties on controller slot ${slot}`);
+
+export const showManufacturingData = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'show', 'manufacturingdata'],
+              `Read manufacturing data on controller slot ${slot}`);
+
+export const showCertificate = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'show', 'certificate'],
+              `Show certificate of use on controller slot ${slot}`);
+
+export const showEula = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'show', 'eula'],
+              `Show EULA on controller slot ${slot}`);
+
+export const showStatusAll = () =>
+    runSsacli(['controller', 'all', 'show', 'status'],
+              'Show status of all controllers');
+
 export const showSsdInfo = (slot: string) =>
-    runSsacli([...ctrlTarget(slot), 'ssdinfo'],
+    runSsacli([...ctrlTarget(slot), 'show', 'ssdinfo'],
               `Read SSD info on controller slot ${slot}`);
 
 export const showTapeDrives = (slot: string) =>
     runSsacli([...ctrlTarget(slot), 'tapedrive', 'all', 'show'],
               `List tape drives on controller slot ${slot}`);
+
+// SSD-specific drive targeting. Erase/LED operations on SSDs reuse the regular
+// pd* wrappers — ssdphysicaldrive is only a targeting filter.
+export const showSsdDrives = (slot: string, kind: 'all' | 'allunassigned' = 'all') =>
+    runSsacli([...ctrlTarget(slot), 'ssdphysicaldrive', kind, 'show'],
+              `List SSD drives (${kind}) on controller slot ${slot}`);
+
+// Show a controller's full configuration via its serial number (useful when
+// the slot assignment is unknown or changed across reboots).
+export const showControllerDetailBySerial = (serialNumber: string) =>
+    runSsacli([...ctrlSnTarget(serialNumber), 'show', 'config', 'detail'],
+              `Show config detail for controller sn ${serialNumber}`);
 
 export const diagController = (slot: string, file: string, opts: { ssdrpt?: boolean; logs?: boolean; xml?: boolean; zip?: boolean } = {}) => {
     const args = [...ctrlTarget(slot), 'diag', `file=${file}`];
@@ -666,6 +819,18 @@ export const encInstantSecureErase = (slot: string, ldId: string) =>
     runSsacli([...ldTarget(slot, ldId), 'modify', 'instantsecureerase'],
               `Instant secure erase on logical drive ${ldId} (slot ${slot})`);
 
+// Encode an existing plaintext logical drive (or whole array). preservedata
+// defaults to yes on the CLI side when omitted; user/password only needed if
+// not currently logged in to the encryption controller.
+export const encEncode = (slot: string, target: { ldId?: string; arrayId?: string },
+    preservedata?: 'yes' | 'no', user?: 'crypto' | 'user',
+    password?: string) => {
+    const base = target.ldId ? ldTarget(slot, target.ldId) : arrayTarget(slot, String(target.arrayId));
+    const what = target.ldId ? `logical drive ${target.ldId}` : `array ${target.arrayId}`;
+    return runSsacli([...base, 'encode', ...kv({ preservedata, user, password })],
+                     `Encode plaintext ${what} on slot ${slot}`);
+};
+
 export const encRekeyController = (slot: string) =>
     runSsacli([...ctrlTarget(slot), 'rekey'],
               `Rekey all logical drives on controller slot ${slot}`);
@@ -701,3 +866,62 @@ export const sedRevertToOfsWithPsid = (slot: string, pdId: string, psid: string)
 export const securityShow = (slot: string) =>
     runSsacli([...ctrlTarget(slot), 'security', 'show'],
               `Show SPDM security info on controller slot ${slot}`);
+
+// Optional login credentials appended to encryption commands for controllers
+// that are not currently logged in (per ssacli help: user=/password=).
+function encAuthArgs(user?: 'crypto' | 'user', password?: string): string[] {
+    return kv({ user, password });
+}
+
+export const encRemoveCtrlPassword = (slot: string, user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'modify', 'removectrlpasswd', ...encAuthArgs(user, password)],
+              `Remove controller password on slot ${slot}`);
+
+export const encCtrlPasswordState = (slot: string, state: 'suspend' | 'resume',
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'modify', `ctrlpasswdstate=${state}`, ...encAuthArgs(user, password)],
+              `${state === 'suspend' ? 'Suspend' : 'Resume'} controller password state on slot ${slot}`);
+
+export const encKeyManagerAuthentication = (slot: string, on: boolean,
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'modify', `keymanagerauthentication=${on ? 'on' : 'off'}`, ...encAuthArgs(user, password)],
+              `${on ? 'Enable' : 'Disable'} key manager authentication on slot ${slot}`);
+
+export const encVolatileKeyAction = (slot: string, ldId: string,
+    action: 'backup' | 'restore' | 'remove',
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ldTarget(slot, ldId), 'modify', `volatileencryptionkeyaction=${action}`, ...encAuthArgs(user, password)],
+              `${action} volatile encryption keys on logical drive ${ldId} (slot ${slot})`);
+
+export const encUnlockVolumes = (slot: string, ctrlpassword: string) =>
+    runSsacli([...ctrlTarget(slot), 'modify', 'unlockvolumes', `ctrlpassword=${ctrlpassword}`],
+              `Unlock encrypted volumes on controller slot ${slot}`);
+
+export const encRescanKeys = (slot: string) =>
+    runSsacli([...ctrlTarget(slot), 'rescankeys'],
+              `Rescan keys from the encryption server on slot ${slot}`);
+
+export const encImportMasterKey = (slot: string, masterkey: string,
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'import', `masterkey=${masterkey}`, ...encAuthArgs(user, password)],
+              `Import local master key on controller slot ${slot}`);
+
+export const encSetRecoveryParams = (slot: string, question: string, answer: string,
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'setrecoveryparams', `question=${question}`, `answer=${answer}`, ...encAuthArgs(user, password)],
+              `Set recovery question/answer on controller slot ${slot}`);
+
+export const encRecoverPassword = (slot: string, answer?: string, password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'recoverpassword', ...kv({ answer, password })],
+              `Recover forgotten crypto password via recovery answer on slot ${slot}`);
+
+export const encSetMasterKeyCache = (slot: string, on: boolean, retryCnt?: number, retryInterval?: number,
+    user?: 'crypto' | 'user', password?: string) =>
+    runSsacli([...ctrlTarget(slot), 'setmasterkeycache', `masterkeycache=${on ? 'on' : 'off'}`, ...kv({ retrycnt: retryCnt, retryinterval: retryInterval }), ...encAuthArgs(user, password)],
+              `Turn master key cache ${on ? 'on' : 'off'} on controller slot ${slot}`);
+
+export const sedRefresh = (slot: string, type?: 'all' | 'locked') => {
+    const args = [...ctrlTarget(slot), 'sedrefresh'];
+    if (type) args.push(`type=${type}`);
+    return runSsacli(args, `Refresh SED status (${type ?? 'all'}) on controller slot ${slot}`);
+};

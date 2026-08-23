@@ -1,0 +1,84 @@
+name: build-packages
+on:
+  push:
+    tags:
+      # this is a glob, not a regexp
+      - '[0-9]*'
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rpm:
+    name: RPM
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/cockpit-project/tasks:latest
+      options: --user root
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # https://github.com/blog/2022-04-12-git-security-vulnerability-announced/
+      - name: Pacify git's permission check
+        run: git config --global --add safe.directory /__w/
+
+      - name: Install rpmbuild tooling
+        run: dnf install -y rpm-build gettext nodejs npm
+
+      - name: Build RPM
+        run: make rpm
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rpm
+          path: '*.rpm'
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.rpm'
+
+  deb:
+    name: DEB
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v4
+
+      - name: Install packaging tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper gettext nodejs npm
+
+      # dist/ is gitignored, so build the bundle before packaging
+      - name: Build bundle
+        run: make dist
+
+      - name: Build DEB
+        run: dpkg-buildpackage -us -uc -b
+
+      - name: Collect .deb
+        run: mv ../cockpit-hpssa_*.deb .
+
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb
+          path: '*.deb'
+          if-no-files-found: error
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: '*.deb'

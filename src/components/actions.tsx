@@ -176,6 +176,8 @@ export function controllerSettingDefs(controller: Controller): SettingDef[] {
     const G_CACHE = _("Cache & performance");
     const G_REBUILD = _("Rebuild & surface scan");
     const G_POWER = _("Power & boot");
+    const G_MODE = _("Mode & ports");
+    const G_ADV = _("Advanced");
 
     return [
         // ---- Cache & performance ----
@@ -192,7 +194,7 @@ export function controllerSettingDefs(controller: Controller): SettingDef[] {
             key: 'drivewritecache',
             group: G_CACHE,
             label: _("Drive write cache"),
-            description: _("Controls whether physical drives may use their own write cache. \"Unchanged\" preserves each drive's existing setting."),
+            description: _("Controls whether physical drives may use their own write cache. \"Unchanged\" preserves each drive's existing setting and is only allowed with usage=configured."),
             currentValue: p => readProp(p, 'Drive Write Cache', 'Physical Drive Write Cache Policy'),
             fields: [
                 {
@@ -540,6 +542,100 @@ export function controllerSettingDefs(controller: Controller): SettingDef[] {
             }],
             onSave: v => svc.setUefiHealthReporting(slot, v.value as 'all'),
         },
+
+        // ---- Mode & ports ----
+        {
+            key: 'hbamode',
+            group: G_MODE,
+            label: _("HBA mode"),
+            description: _("Expose physical drives directly to the OS; RAID configuration is not allowed while on."),
+            currentValue: p => readProp(p, 'HBA Mode'),
+            fields: [{ key: 'on', label: _("Enabled"), type: 'switch' }],
+            onSave: v => svc.setHbaMode(slot, Boolean(v.on)),
+        },
+        {
+            key: 'raidmode',
+            group: G_MODE,
+            label: _("RAID mode"),
+            description: _("Allow RAID configuration on this controller."),
+            currentValue: p => readProp(p, 'RAID Mode'),
+            fields: [{ key: 'on', label: _("Enabled"), type: 'switch' }],
+            onSave: v => svc.setRaidMode(slot, Boolean(v.on)),
+        },
+        {
+            key: 'portmode',
+            group: G_MODE,
+            label: _("Port mode"),
+            description: _("Per-port mode for controllers that support it: hba, raid, or mixed."),
+            currentValue: p => readProp(p, 'Port Mode'),
+            fields: [{
+                key: 'mode',
+                label: _("Mode"),
+                type: 'select',
+                required: true,
+                options: ['hba', 'raid', 'mixed'].map(v => ({ value: v, label: v })),
+            }],
+            onSave: v => svc.setPortMode(slot, v.mode as 'raid'),
+        },
+
+        // ---- Advanced ----
+        {
+            key: 'spareactivationmode',
+            group: G_ADV,
+            label: _("Spare activation mode"),
+            description: _("Activate spares only on drive failure (default) or predictively before failure."),
+            currentValue: p => readProp(p, 'Spare Activation Mode'),
+            fields: [{
+                key: 'mode',
+                label: _("Mode"),
+                type: 'select',
+                required: true,
+                options: [
+                    { value: 'failure', label: _("On failure") },
+                    { value: 'predictive', label: _("Predictive") },
+                ],
+            }],
+            onSave: v => svc.setSpareActivationMode(slot, v.mode as 'predictive'),
+        },
+        {
+            key: 'latency',
+            group: G_ADV,
+            label: _("Latency scheduler"),
+            description: _("Cap HDD latency under random workloads: low (250 ms cap), high (50 ms cap), fixed 100/30/10 ms, or disabled."),
+            currentValue: p => readProp(p, 'Latency Scheduler', 'Latency'),
+            fields: [{
+                key: 'level',
+                label: _("Setting"),
+                type: 'select',
+                required: true,
+                options: ['low', '100', 'high', '30', '10', 'disable'].map(v => ({ value: v, label: v })),
+            }],
+            onSave: v => svc.setLatencyScheduler(slot, v.level as 'low'),
+        },
+        {
+            key: 'mrrs',
+            group: G_ADV,
+            label: _("Max read request size"),
+            description: _("Maximum PCIe read request size in bytes, for performance tuning. Requires at least one logical drive."),
+            currentValue: p => readProp(p, 'Max Read Request Size'),
+            fields: [{
+                key: 'size',
+                label: _("Size"),
+                type: 'select',
+                required: true,
+                options: ['default', '128', '256', '512', '1024', '2048'].map(v => ({ value: v, label: v })),
+            }],
+            onSave: v => svc.setMaxReadRequestSize(slot, v.size === 'default' ? 'default' : Number(v.size) as 128),
+        },
+        {
+            key: 'drivernotify',
+            group: G_ADV,
+            label: _("Driver notify"),
+            description: _("Notify the driver to initiate rescan after configuration changes."),
+            currentValue: p => readProp(p, 'Driver Notify'),
+            fields: [{ key: 'on', label: _("Enabled"), type: 'switch' }],
+            onSave: v => svc.setDriverNotify(slot, Boolean(v.on)),
+        },
     ];
 }
 
@@ -607,6 +703,48 @@ export function controllerActions(
             onSelect: () => open.openOutput(_("Tape drives"), () => svc.showTapeDrives(slot)),
         },
         {
+            id: 'show-sep',
+            group: _("LED & Diagnostics"),
+            label: _("Show SEP devices"),
+            onSelect: () => open.openOutput(_("SEP devices"), () => svc.showSepDevices(slot)),
+        },
+        {
+            id: 'show-backplanes',
+            group: _("LED & Diagnostics"),
+            label: _("Show backplanes"),
+            onSelect: () => open.openOutput(_("Backplanes"), () => svc.showBackplanes(slot)),
+        },
+        {
+            id: 'show-ssddrives',
+            group: _("LED & Diagnostics"),
+            label: _("Show SSD drives"),
+            onSelect: () => open.openOutput(_("SSD drives"), () => svc.showSsdDrives(slot)),
+        },
+        {
+            id: 'show-eula',
+            group: _("LED & Diagnostics"),
+            label: _("Show EULA"),
+            onSelect: () => open.openOutput(_("EULA"), () => svc.showEula(slot)),
+        },
+        {
+            id: 'show-certificate',
+            group: _("LED & Diagnostics"),
+            label: _("Show certificate of use"),
+            onSelect: () => open.openOutput(_("Certificate of use"), () => svc.showCertificate(slot)),
+        },
+        {
+            id: 'show-oob',
+            group: _("LED & Diagnostics"),
+            label: _("Show out-of-band config"),
+            onSelect: () => open.openOutput(_("Out-of-band interface"), () => svc.showOutOfBand(slot)),
+        },
+        {
+            id: 'show-manufacturingdata',
+            group: _("LED & Diagnostics"),
+            label: _("Show manufacturing data"),
+            onSelect: () => open.openOutput(_("Manufacturing data"), () => svc.showManufacturingData(slot)),
+        },
+        {
             id: 'add-licensekey',
             group: _("LED & Diagnostics"),
             label: _("Add license key…"),
@@ -641,6 +779,86 @@ export function controllerActions(
                     { key: 'ssdrpt', label: _("SmartSSD wear gauge report"), type: 'switch' },
                 ],
                 onSubmit: v => svc.diagController(slot, String(v.file), { logs: Boolean(v.logs), ssdrpt: Boolean(v.ssdrpt) }),
+            }),
+        },
+
+        // ---- Encryption ----
+        {
+            id: 'enc-login',
+            group: _("Encryption"),
+            label: _("Login…"),
+            onSelect: () => open.openForm({
+                title: _("Encryption login"),
+                fields: [
+                    {
+                        key: 'user',
+                        label: _("User"),
+                        type: 'select',
+                        required: true,
+                        options: [{ value: 'crypto', label: 'crypto' }, { value: 'user', label: 'user' }],
+                    },
+                    { key: 'password', label: _("Password"), type: 'password' },
+                ],
+                onSubmit: v => svc.encLogin(slot, v.user as 'crypto', String(v.password ?? '')),
+            }),
+        },
+        {
+            id: 'enc-logout',
+            group: _("Encryption"),
+            label: _("Logout"),
+            onSelect: () => open.openConfirm({
+                title: _("Encryption logout"),
+                body: _("Log out from the encrypting controller."),
+                confirmVariant: 'primary',
+                confirmLabel: _("Logout"),
+                onConfirm: () => svc.encLogout(slot),
+            }),
+        },
+        {
+            id: 'enc-unlock',
+            group: _("Encryption"),
+            label: _("Unlock volumes…"),
+            onSelect: () => open.openForm({
+                title: _("Unlock encrypted volumes"),
+                fields: [{ key: 'ctrlpassword', label: _("Controller password"), type: 'password', required: true }],
+                submitLabel: _("Unlock"),
+                onSubmit: v => svc.encUnlockVolumes(slot, String(v.ctrlpassword)),
+            }),
+        },
+        {
+            id: 'enc-rescankeys',
+            group: _("Encryption"),
+            label: _("Rescan encryption keys"),
+            onSelect: () => open.openConfirm({
+                title: _("Rescan encryption keys"),
+                body: _("Rescan keys from the encryption server."),
+                confirmVariant: 'primary',
+                confirmLabel: _("Rescan"),
+                onConfirm: () => svc.encRescanKeys(slot),
+            }),
+        },
+        {
+            id: 'enc-remove-passwd',
+            group: _("Encryption"),
+            label: _("Remove controller password…"),
+            isDanger: true,
+            onSelect: () => open.openConfirm({
+                title: _("Remove controller password"),
+                body: _("Removes the controller password. Encrypted volumes may become inaccessible at boot."),
+                requireTyped: 'REMOVE',
+                onConfirm: () => svc.encRemoveCtrlPassword(slot, 'crypto'),
+            }),
+        },
+        {
+            id: 'sed-refresh',
+            group: _("Encryption"),
+            label: _("SED refresh"),
+            onSelect: () => open.openConfirm({
+                title: _("SED refresh"),
+                body: _("Refresh self-encrypting drive status from the controller."),
+                confirmVariant: 'primary',
+                confirmLabel: _("Refresh"),
+                onConfirm: () => svc.sedRefresh(slot, 'all'),
             }),
         },
 
@@ -680,6 +898,120 @@ export function controllerActions(
                 confirmLabel: _("Clear configuration"),
                 requireTyped: 'CLEAR',
                 onConfirm: () => svc.deleteController(slot, { forced: true, override: true }),
+            }),
+        },
+        {
+            id: 'clear-nvram',
+            group: _("Danger zone"),
+            label: _("Clear NVRAM…"),
+            isDanger: true,
+            onSelect: () => open.openForm({
+                title: _("Clear NVRAM"),
+                description: _("Clears controller configuration stored in NVRAM and/or event logs."),
+                submitVariant: 'warning',
+                submitLabel: _("Clear"),
+                fields: [{
+                    key: 'what',
+                    label: _("What to clear"),
+                    type: 'select',
+                    required: true,
+                    options: [
+                        { value: 'nvram', label: _("NVRAM only") },
+                        { value: 'logs', label: _("Event logs only") },
+                        { value: 'all', label: _("NVRAM + event logs") },
+                    ],
+                }],
+                onSubmit: v => svc.clearNvram(slot, v.what as 'nvram'),
+            }),
+        },
+        {
+            id: 'clear-configdata',
+            group: _("Danger zone"),
+            label: _("Clear RAID config data…"),
+            isDanger: true,
+            onSelect: () => open.openConfirm({
+                title: _("Clear RAID config data"),
+                body: _("Clears RAID configuration data so affected drives are exposed to the operating system. Typically used in HBA mode."),
+                requireTyped: 'CLEAR',
+                onConfirm: () => svc.clearConfigData(slot),
+            }),
+        },
+        {
+            id: 'flash-fw',
+            group: _("Danger zone"),
+            label: _("Update firmware…"),
+            isDanger: true,
+            onSelect: () => open.openForm({
+                title: _("Update controller firmware"),
+                description: _("Flash a firmware image onto this controller. The file must exist on the host filesystem."),
+                submitVariant: 'danger',
+                submitLabel: _("Flash"),
+                fields: [
+                    { key: 'file', label: _("Firmware file path"), type: 'text', required: true, placeholder: '/tmp/firmware.bin' },
+                    {
+                        key: 'mode',
+                        label: _("Mode"),
+                        type: 'select',
+                        helper: _("Controller flashes usually need no mode; modes apply to drives/SEPs."),
+                        options: [
+                            { value: '5', label: '5 — single transfer, activate' },
+                            { value: '7', label: '7 — segmented, activate' },
+                            { value: 'E', label: 'E — segmented, no activate' },
+                            { value: 'E+F', label: 'E+F — segmented, activate' },
+                        ],
+                    },
+                    { key: 'transfersize', label: _("Transfer size (bytes)"), type: 'number' },
+                    {
+                        key: 'immediate',
+                        label: _("Immediate activation"),
+                        type: 'select',
+                        options: [{ value: 'enable', label: _("Enable") }, { value: 'disable', label: _("Disable") }],
+                    },
+                    { key: 'forced', label: _("Forced"), type: 'switch' },
+                ],
+                onSubmit: v => svc.flashControllerFirmware(slot, {
+                    file: String(v.file),
+                    ...defined({
+                        mode: v.mode as '5',
+                        transfersize: v.transfersize as number | undefined,
+                        immediate: v.immediate as 'enable' | 'disable' | undefined,
+                    }),
+                    forced: Boolean(v.forced),
+                }),
+            }),
+        },
+        {
+            id: 'flash-sep-fw',
+            group: _("Danger zone"),
+            label: _("Update SEP firmware…"),
+            isDanger: true,
+            onSelect: () => open.openForm({
+                title: _("Update SEP firmware"),
+                description: _("Flash a firmware image onto an expander (SEP). The file must exist on the host filesystem. Use \"Show SEP devices\" to find the SEP ID."),
+                submitVariant: 'danger',
+                submitLabel: _("Flash"),
+                fields: [
+                    { key: 'sepId', label: _("SEP ID"), type: 'text', required: true, placeholder: '379' },
+                    { key: 'file', label: _("Firmware file path"), type: 'text', required: true, placeholder: '/tmp/sep_firmware.bin' },
+                    {
+                        key: 'mode',
+                        label: _("Mode"),
+                        type: 'select',
+                        required: true,
+                        options: [
+                            { value: '5', label: '5 — single transfer, activate' },
+                            { value: '7', label: '7 — segmented, activate' },
+                            { value: 'E', label: 'E — segmented, no activate' },
+                            { value: 'E+F', label: 'E+F — segmented, activate' },
+                        ],
+                    },
+                    { key: 'transfersize', label: _("Transfer size (bytes)"), type: 'number', defaultValue: 32768 },
+                ],
+                onSubmit: v => svc.flashSepFirmware(slot, String(v.sepId), {
+                    file: String(v.file),
+                    mode: v.mode as '5',
+                    ...defined({ transfersize: v.transfersize as number | undefined }),
+                }),
             }),
         },
     ];
@@ -946,6 +1278,26 @@ export function ldActions(
             }),
         },
         {
+            id: 'writepolicy',
+            group: _("Settings"),
+            label: _("Write policy…"),
+            onSelect: () => open.openForm({
+                title: _("SSD caching write policy"),
+                description: _("Only applies to logical drives using SSD caching."),
+                fields: [{
+                    key: 'policy',
+                    label: _("Policy"),
+                    type: 'select',
+                    required: true,
+                    options: [
+                        { value: 'writethrough', label: 'writethrough' },
+                        { value: 'writeback', label: 'writeback' },
+                    ],
+                }],
+                onSubmit: v => svc.ldSetWritePolicy(slot, id, v.policy as 'writeback'),
+            }),
+        },
+        {
             id: 'label',
             group: _("Settings"),
             label: _("Set label…"),
@@ -1035,6 +1387,36 @@ export function ldActions(
                 confirmVariant: 'warning',
                 confirmLabel: _("Re-enable"),
                 onConfirm: () => svc.ldReenable(slot, id, true),
+            }),
+        },
+        {
+            id: 'encode',
+            group: _("Encryption"),
+            label: _("Encode volume…"),
+            onSelect: () => open.openForm({
+                title: cockpit.format(_("Encode logical drive $0"), id),
+                description: _("Converts an existing plaintext logical drive to encrypted. Requires an encryption-enabled controller."),
+                fields: [
+                    {
+                        key: 'preservedata',
+                        label: _("Preserve data"),
+                        type: 'select',
+                        defaultValue: 'yes',
+                        options: [
+                            { value: 'yes', label: _("Yes (default) — encode in place") },
+                            { value: 'no', label: _("No — data will be lost") },
+                        ],
+                    },
+                    { key: 'user', label: _("User"), type: 'select', helper: _("Only needed if not logged in to the controller."), options: [{ value: 'crypto', label: 'crypto' }, { value: 'user', label: 'user' }] },
+                    { key: 'password', label: _("Password"), type: 'password' },
+                ],
+                onSubmit: v => {
+                    const hasCreds = Boolean(v.user && v.password);
+                    return svc.encEncode(slot, { ldId: id },
+                                         v.preservedata as 'yes',
+                                         hasCreds ? v.user as 'crypto' : undefined,
+                                         hasCreds ? String(v.password) : undefined);
+                },
             }),
         },
         {
@@ -1135,6 +1517,18 @@ export function pdActions(
                 confirmVariant: 'primary',
                 confirmLabel: _("Enable"),
                 onConfirm: () => svc.pdEnableErasedDrive(slot, id),
+            }),
+        },
+        {
+            id: 'disable',
+            group: _("Danger zone"),
+            label: _("Disable drive…"),
+            isDanger: true,
+            onSelect: () => open.openConfirm({
+                title: _("Disable drive"),
+                body: cockpit.format(_("Temporarily fail drive $0 until a hot-plug event or controller reset?"), id),
+                requireTyped: id,
+                onConfirm: () => svc.pdDisable(slot, id, true),
             }),
         },
     ];

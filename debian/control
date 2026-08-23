@@ -1,0 +1,13 @@
+Source: cockpit-hpssa
+Section: admin
+Priority: optional
+Standards-Version: 4.6.2
+Build-Depends: debhelper-compat (= 13)
+Rules-Requires-Root: no
+
+Package: cockpit-hpssa
+Architecture: all
+Depends: ${misc:Depends}, cockpit-bridge (>= 137)
+Description: Cockpit plugin for managing HPE Smart Array storage
+ Cockpit plugin for managing HPE Smart Array RAID controllers, arrays,
+ logical and physical drives, and enclosures via ssacli.

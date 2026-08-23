@@ -2,8 +2,11 @@ import React from 'react';
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
 import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
-import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Stack, StackItem } from "@patternfly/react-core/dist/esm/layouts/Stack/index.js";
+import {
+    DataList, DataListItem, DataListItemRow, DataListItemCells,
+    DataListCell, DataListAction,
+} from "@patternfly/react-core/dist/esm/components/DataList/index.js";
 import PencilAltIcon from "@patternfly/react-icons/dist/esm/icons/pencil-alt-icon.js";
 import cockpit from 'cockpit';
 
@@ -40,7 +43,7 @@ export function readProp(props: KeyValue, ...keys: string[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// Settings page — groups, rows, edit-dialog wiring.
+// Settings page — groups rendered as PF DataLists with an edit action each.
 // ---------------------------------------------------------------------------
 
 interface SettingsPageProps {
@@ -65,22 +68,48 @@ export function SettingsPage({ controller, settings, reload }: SettingsPageProps
 
     return (
         <>
-            <Stack hasGutter className="hpssa-settings">
+            <Stack hasGutter>
                 {groups.map((g, idx) => (
                     <StackItem key={g.name}>
                         {idx > 0 && <Divider className="pf-v6-u-my-md" />}
                         <Title headingLevel="h3" size="lg" className="pf-v6-u-mb-sm">{g.name}</Title>
-                        <Stack>
+                        <DataList aria-label={g.name} isCompact>
                             {g.items.map(s => (
-                                <StackItem key={s.key}>
-                                    <SettingRow
-                                        setting={s}
-                                        value={s.currentValue(controller.properties)}
-                                        onEdit={() => setEditing(s)}
-                                    />
-                                </StackItem>
+                                <DataListItem key={s.key} aria-labelledby={`setting-${s.key}`}>
+                                    <DataListItemRow>
+                                        <DataListItemCells
+                                            dataListCells={[
+                                                <DataListCell key="main">
+                                                    <span id={`setting-${s.key}`} className="pf-v6-u-font-weight-bold">
+                                                        {s.label}
+                                                    </span>
+                                                    <span className="hpssa-setting-value">
+                                                        {s.currentValue(controller.properties)}
+                                                    </span>
+                                                    <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm">
+                                                        {s.description}
+                                                    </span>
+                                                </DataListCell>,
+                                            ]}
+                                        />
+                                        <DataListAction
+                                            aria-labelledby={`setting-${s.key} setting-${s.key}-edit`}
+                                            id={`setting-${s.key}-edit`}
+                                            aria-label={_("Edit setting")}
+                                        >
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                icon={<PencilAltIcon />}
+                                                onClick={() => setEditing(s)}
+                                            >
+                                                {_("Edit")}
+                                            </Button>
+                                        </DataListAction>
+                                    </DataListItemRow>
+                                </DataListItem>
                             ))}
-                        </Stack>
+                        </DataList>
                     </StackItem>
                 ))}
             </Stack>
@@ -97,38 +126,5 @@ export function SettingsPage({ controller, settings, reload }: SettingsPageProps
                 />
             )}
         </>
-    );
-}
-
-interface SettingRowProps {
-    setting: SettingDef;
-    value: string;
-    onEdit: () => void;
-}
-
-function SettingRow({ setting, value, onEdit }: SettingRowProps) {
-    return (
-        <Flex
-            className="hpssa-setting-row"
-            spaceItems={{ default: 'spaceItemsMd' }}
-            alignItems={{ default: 'alignItemsFlexStart' }}
-            justifyContent={{ default: 'justifyContentSpaceBetween' }}
-        >
-            <FlexItem grow={{ default: 'grow' }}>
-                <div className="hpssa-setting-row__label">{setting.label}</div>
-                <div className="hpssa-setting-row__value">{value}</div>
-                <div className="hpssa-setting-row__desc">{setting.description}</div>
-            </FlexItem>
-            <FlexItem>
-                <Button
-                    variant="secondary"
-                    icon={<PencilAltIcon />}
-                    onClick={onEdit}
-                    size="sm"
-                >
-                    {_("Edit")}
-                </Button>
-            </FlexItem>
-        </Flex>
     );
 }

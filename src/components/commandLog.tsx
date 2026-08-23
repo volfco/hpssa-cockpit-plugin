@@ -4,11 +4,14 @@ import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.
 import { Switch } from "@patternfly/react-core/dist/esm/components/Switch/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
+import { EmptyStateHeader } from "@patternfly/react-core/dist/esm/components/EmptyState/EmptyStateHeader.js";
+import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { CodeBlock, CodeBlockCode } from "@patternfly/react-core/dist/esm/components/CodeBlock/index.js";
 import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
 import { Flex, FlexItem } from "@patternfly/react-core/dist/esm/layouts/Flex/index.js";
 import { Stack, StackItem } from "@patternfly/react-core/dist/esm/layouts/Stack/index.js";
 import TrashIcon from "@patternfly/react-icons/dist/esm/icons/trash-icon.js";
+import HistoryIcon from "@patternfly/react-icons/dist/esm/icons/history-icon.js";
 import CopyIcon from "@patternfly/react-icons/dist/esm/icons/copy-icon.js";
 import DownloadIcon from "@patternfly/react-icons/dist/esm/icons/download-icon.js";
 import cockpit from 'cockpit';
@@ -55,49 +58,53 @@ function CommandLogEntryView({ entry }: { entry: CommandLogEntry }) {
     const hasOutput = (entry.output && entry.output.trim()) || entry.error;
 
     return (
-        <div className="hpssa-log-entry">
-            <Flex
-                spaceItems={{ default: 'spaceItemsSm' }}
-                alignItems={{ default: 'alignItemsCenter' }}
-                className="hpssa-log-entry__meta"
-            >
-                <FlexItem>
-                    <span className="hpssa-log-entry__time">{formatTime(entry.timestamp)}</span>
-                </FlexItem>
-                <FlexItem>{statusLabel(entry)}</FlexItem>
-                {entry.durationMs !== undefined && (
+        <Card isCompact>
+            <CardBody>
+                <Flex
+                    spaceItems={{ default: 'spaceItemsSm' }}
+                    alignItems={{ default: 'alignItemsCenter' }}
+                    className="pf-v6-u-mb-xs"
+                >
                     <FlexItem>
-                        <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm">
-                            {entry.durationMs} ms
+                        <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm hpssa-log-time">
+                            {formatTime(entry.timestamp)}
                         </span>
                     </FlexItem>
-                )}
-            </Flex>
-            <CodeBlock
-                actions={
-                    <Button
-                        variant="plain"
-                        aria-label={_("Copy")}
-                        icon={<CopyIcon />}
-                        onClick={() => navigator.clipboard?.writeText(renderBash(entry))}
-                    />
-                }
-            >
-                <CodeBlockCode>{renderBash(entry)}</CodeBlockCode>
-            </CodeBlock>
-            {hasOutput && (
-                <ExpandableSection
-                    toggleText={showOutput ? _("Hide output") : _("Show output")}
-                    isExpanded={showOutput}
-                    onToggle={(_e, v) => setShowOutput(v)}
-                    isIndented
+                    <FlexItem>{statusLabel(entry)}</FlexItem>
+                    {entry.durationMs !== undefined && (
+                        <FlexItem>
+                            <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm">
+                                {entry.durationMs} ms
+                            </span>
+                        </FlexItem>
+                    )}
+                </Flex>
+                <CodeBlock
+                    actions={
+                        <Button
+                            variant="plain"
+                            aria-label={_("Copy")}
+                            icon={<CopyIcon />}
+                            onClick={() => navigator.clipboard?.writeText(renderBash(entry))}
+                        />
+                    }
                 >
-                    <CodeBlock>
-                        <CodeBlockCode>{entry.error || entry.output}</CodeBlockCode>
-                    </CodeBlock>
-                </ExpandableSection>
-            )}
-        </div>
+                    <CodeBlockCode>{renderBash(entry)}</CodeBlockCode>
+                </CodeBlock>
+                {hasOutput && (
+                    <ExpandableSection
+                        toggleText={showOutput ? _("Hide output") : _("Show output")}
+                        isExpanded={showOutput}
+                        onToggle={(_e, v) => setShowOutput(v)}
+                        isIndented
+                    >
+                        <CodeBlock>
+                            <CodeBlockCode>{entry.error || entry.output}</CodeBlockCode>
+                        </CodeBlock>
+                    </ExpandableSection>
+                )}
+            </CardBody>
+        </Card>
     );
 }
 
@@ -178,9 +185,10 @@ export function CommandLog() {
             {sorted.length === 0
                 ? (
                     <StackItem>
-                        <EmptyState>
+                        <EmptyState icon={HistoryIcon} headingLevel="h2">
+                            <EmptyStateHeader titleText={_("No commands logged yet")} headingLevel="h3" />
                             <EmptyStateBody>
-                                {_("No ssacli commands have been run yet. Modify a setting or run a command from the toolbar to see it logged here.")}
+                                {_("Modify a setting or run a command from the toolbar to see it logged here.")}
                             </EmptyStateBody>
                         </EmptyState>
                     </StackItem>

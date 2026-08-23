@@ -166,7 +166,6 @@ export function FormDialog({
                                 onClick={handleSubmit}
                                 isDisabled={busy || missingRequired}
                                 isLoading={busy}
-                                icon={busy ? <Spinner size="md" /> : undefined}
                             >
                                 {submitLabel}
                             </Button>
@@ -443,7 +442,7 @@ title={_("Run ssacli command")}
                             <FormHelperText>
                                 <HelperText>
                                     <HelperTextItem>
-                                        {_("Examples: \"ctrl slot=1 show detail\", \"ctrl slot=1 modify cacheratio=25/75\"")}
+                                        {_("Examples: \"ctrl slot=1 show detail\", \"ctrl slot=1 modify cacheratio=25/75\", \"controller serialnumber=PEYHC0DRHDE3VF show config detail\"")}
                                     </HelperTextItem>
                                 </HelperText>
                             </FormHelperText>
