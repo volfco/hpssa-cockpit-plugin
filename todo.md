@@ -12,3 +12,4 @@
 - [x] SEP/backplane targets: show + flash + configurationmode wrappers; Show SEP devices / Show backplanes / Update SEP firmware… UI. Ref: src/service.ts, src/components/actions.tsx.
 - [x] Targeting by serialnumber= (`ctrlSnTarget`, `showControllerDetailBySerial`, `showEnclosureBySerial`) and ssdphysicaldrive (`showSsdDrives`); ch= helper `ctrlChTarget`; remaining ops stay on the raw command dialog. Ref: src/service.ts.
 - [x] encode preservedata= → `encEncode` + LD ⋮ → Encryption → Encode volume…. Ref: src/components/actions.tsx ldActions.
+- [ ] Repo setting (manual, not code): enable Settings → Actions → General → "Allow GitHub Actions to create and approve pull requests" so cockpit-lib-update can open its PRs. Interim: branch cockpit-lib-20260820-025151 is pushed and can be merged manually.
