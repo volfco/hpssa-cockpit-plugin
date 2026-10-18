@@ -4,13 +4,11 @@ Release: 1%{?dist}
 Summary: Cockpit plugin for managing HPE Smart Array (ssacli) storage
 License: LGPL-2.1-or-later
 
-# distributions which ship nodejs-esbuild can rebuild the bundle during package build
-%if 0%{?fedora} >= 42
-%define rebuild_bundle 1
-%endif
-
-Source0: https://github.com/OWNER/hpssa-cockpit-plugin/releases/download/%{version}/%{name}-%{version}.tar.xz
-Source1: https://github.com/OWNER/hpssa-cockpit-plugin/releases/download/%{version}/%{name}-node-%{version}.tar.xz
+# opt-in: rpmbuild --define "rebuild_bundle 1" rebuilds dist/ during package build
+# (needs the BuildRequires below installed). Not auto-enabled per Fedora version:
+# `make rpm`/CI runs rpmbuild directly, which does not install BuildRequires.
+Source0: https://github.com/volfco/hpssa-cockpit-plugin/releases/download/%{version}/%{name}-%{version}.tar.xz
+Source1: https://github.com/volfco/hpssa-cockpit-plugin/releases/download/%{version}/%{name}-node-%{version}.tar.xz
 
 BuildArch: noarch
 %if ! 0%{?suse_version}

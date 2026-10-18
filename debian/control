@@ -1,4 +1,5 @@
 Source: cockpit-hpssa
+Maintainer: volfco <volfco@users.noreply.github.com>
 Section: admin
 Priority: optional
 Standards-Version: 4.6.2

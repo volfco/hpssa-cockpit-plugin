@@ -1,7 +1,8 @@
 # extract name from package.json
 PACKAGE_NAME := $(shell awk '/"name":/ {gsub(/[",]/, "", $$2); print $$2}' package.json)
 RPM_NAME := cockpit-$(PACKAGE_NAME)
-VERSION := $(shell T=$$(git describe 2>/dev/null) || T=1; echo $$T | tr '-' '.')
+# tags are often prefixed with "v" (v1.2.3); packages carry the bare version
+VERSION := $(shell T=$$(git describe --tags 2>/dev/null) || T=1; echo $$T | tr '-' '.' | sed 's/^v//')
 ifeq ($(TEST_OS),)
 TEST_OS = centos-9-stream
 endif
@@ -159,7 +160,8 @@ rpm: $(TARFILE) $(NODE_CACHE) $(SPEC)
 	  $(SPEC)
 	find `pwd`/output -name '*.rpm' -printf '%f\n' -exec mv {} . \;
 	rm -r "`pwd`/rpmbuild"
-	rm -r "`pwd`/output" "`pwd`/build"
+	# rpm ≥ 4.20 ignores _buildrootdir, so build/ does not necessarily exist
+	rm -rf "`pwd`/output" "`pwd`/build"
 
 # build a VM with locally built distro pkgs installed
 # disable networking, VM images have mock/pbuilder with the common build dependencies pre-installed
