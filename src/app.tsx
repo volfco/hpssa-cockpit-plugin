@@ -658,11 +658,12 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
                             <Button
                                 variant="secondary"
                                 icon={<SyncIcon />}
-                                onClick={async () => {
-                                    await rescanController(controller.slot);
-                                    reload();
-                                }}
                                 size="sm"
+                                onClick={() => dialogs.openOutput(_("Rescan"), async () => {
+                                    const out = await rescanController(controller.slot);
+                                    reload();
+                                    return out.trim() || _("Rescan completed.");
+                                })}
                             >
                                 {_("Rescan")}
                             </Button>
@@ -855,17 +856,23 @@ export const Application = () => {
     const [view, setView] = React.useState<ViewState>({ level: 'dashboard' });
     const [loading, setLoading] = React.useState(true);
     const [rawOpen, setRawOpen] = React.useState(false);
+    const dialogs = useDialogs();
 
-    const loadData = React.useCallback(async () => {
-        setLoading(true);
+    // `background` refreshes keep the current view (and any open dialog) mounted,
+    // so a command's success/error stays visible in its modal; only the initial
+    // load and error retries may replace the page with the spinner/error state.
+    const loadData = React.useCallback(async (background = false) => {
+        if (!background) setLoading(true);
         setError(null);
         try {
             const data = await fetchOverview();
             setOverview(data);
         } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : String(e));
+            // Background failure keeps the stale data instead of unmounting open
+            // dialogs; the foreground path surfaces it with the Retry alert.
+            if (!background) setError(e instanceof Error ? e.message : String(e));
         } finally {
-            setLoading(false);
+            if (!background) setLoading(false);
         }
     }, []);
 
@@ -912,7 +919,7 @@ export const Application = () => {
                     title={_("Error loading storage information")}
                     isInline
                     actionLinks={
-                        <Button variant="link" onClick={loadData} icon={<SyncIcon />}>
+                        <Button variant="link" onClick={() => loadData()} icon={<SyncIcon />}>
                             {_("Retry")}
                         </Button>
                     }
@@ -930,7 +937,7 @@ export const Application = () => {
                 overview={overview}
                 controller={selectedController}
                 onBack={() => setView({ level: 'dashboard' })}
-                reload={loadData}
+                reload={() => loadData(true)}
             />
         );
     } else if (view.level === 'commandlog') {
@@ -948,7 +955,7 @@ export const Application = () => {
                             <EmptyStateBody>
                                 {_("Ensure ssacli is installed and the system has compatible HP storage hardware.")}
                             </EmptyStateBody>
-                            <Button variant="primary" icon={<SyncIcon />} onClick={loadData}>
+                            <Button variant="primary" icon={<SyncIcon />} onClick={() => loadData()}>
                                 {_("Refresh")}
                             </Button>
                         </EmptyState>
@@ -1023,7 +1030,11 @@ export const Application = () => {
                                 variant="secondary"
                                 icon={<SyncIcon />}
                                 size="sm"
-                                onClick={async () => { await rescanAll(); loadData() }}
+                                onClick={() => dialogs.openOutput(_("Rescan all"), async () => {
+                                    const out = await rescanAll();
+                                    loadData(true);
+                                    return out.trim() || _("Rescan completed.");
+                                })}
                             >
                                 {_("Rescan all")}
                             </Button>
@@ -1076,6 +1087,7 @@ export const Application = () => {
                 onClose={() => { setRawOpen(false); loadData() }}
                 onRun={runSsacliCommandLine}
             />
+            {dialogs.node}
         </Page>
     );
 };

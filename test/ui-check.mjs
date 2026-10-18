@@ -26,6 +26,9 @@ await build({
                         .replace('export async function fetchOverview()', 'async function unusedHardwareOverview()') + `
 import { overview as fixtureOverview } from ${JSON.stringify(fixture)};
 export async function fetchOverview() {
+    // Delay discovery so the check can observe in-flight states (spinner,
+    // dialog mounted during reload) instead of racing through microtasks.
+    await new Promise(r => setTimeout(r, 300));
     if (window.location.search.includes('error')) throw new Error('Mock discovery failure');
     if (window.location.search.includes('empty')) return { controllers: [], arrays: [], logicalDrives: [], physicalDrives: [], enclosures: [] };
     return fixtureOverview;
@@ -79,8 +82,22 @@ try {
         return r.result.value;
     };
     const settle = () => evaluate('new Promise(r => setTimeout(() => requestAnimationFrame(() => requestAnimationFrame(r)), 250))');
-    const click = async (selector, text) => {
-        assert(await evaluate(`(() => { const el = [...document.querySelectorAll(${JSON.stringify(selector)})].find(e => e.textContent.includes(${JSON.stringify(text)}) && e.getClientRects().length); if (!el) return false; el.scrollIntoView({block:"nearest", inline:"nearest", behavior:"instant"}); el.click(); return true; })()`), `Missing ${selector}: ${text}`);
+    const waitForEval = async (expression, what = expression) => {
+        for (let i = 0; i < 40; i++) {
+            if (await evaluate(expression)) return;
+            await settle();
+        }
+        assert.fail('timeout waiting for: ' + what);
+    };
+    const matchExpr = (selector, text, exact = false) => {
+        const cmp = exact ? `e.textContent.trim() === ${JSON.stringify(text)}` : `e.textContent.includes(${JSON.stringify(text)})`;
+        return `[...document.querySelectorAll(${JSON.stringify(selector)})].find(e => ${cmp} && e.getClientRects().length)`;
+    };
+    const has = (selector, text, exact) => evaluate(`!!${matchExpr(selector, text, exact)}`);
+    const click = async (selector, text, exact = false) => {
+        // Delayed mock discovery may not have rendered yet; wait instead of failing fast.
+        for (let i = 0; i < 40 && !(await has(selector, text, exact)); i++) await settle();
+        assert(await evaluate(`(() => { const el = ${matchExpr(selector, text, exact)}; if (!el) return false; el.scrollIntoView({block:"nearest", inline:"nearest", behavior:"instant"}); el.click(); return true; })()`), `Missing ${selector}: ${text}`);
         await settle();
     };
     const checkLayout = async label => {
@@ -115,6 +132,8 @@ try {
         await call('browsingContext.navigate', { context, url: `http://127.0.0.1:${server.address().port}/${query}`, wait: 'complete' });
         await evaluate('document.fonts.ready.then(() => true)');
         await settle();
+        // Wait for the delayed initial discovery to render (nav, empty state, or error alert).
+        await waitForEval(`!!document.querySelector('.pf-v6-c-nav__link, .pf-v6-c-alert, .pf-v6-c-empty-state')`, 'page content');
     };
     for (const width of [1440, 1024, 768, 390]) {
         await call('browsingContext.setViewport', { context, viewport: { width, height: 1000 }, devicePixelRatio: 1 });
@@ -152,9 +171,31 @@ try {
                     const { data } = await call('browsingContext.captureScreenshot', { context });
                     await fs.writeFile(path.join(outdir, `settings-${width}.png`), Buffer.from(data, 'base64'));
                 }
-                await click('button', 'Cancel');
+                // Change the setting: the modal must stay open while the command
+                // runs (Escape is ignored), then present the outcome before closing.
+                await evaluate(`(() => { const el = document.querySelector('[role=dialog] input'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(el, '25/75'); el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+                await settle();
+                await click('.pf-v6-c-modal-box button', 'Apply');
+                // PF attaches the Escape listener to document.body, so dispatch
+                // from inside the dialog (bubbles to body) while the command runs.
+                await evaluate(`document.querySelector('[role=dialog]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))`);
+                await settle();
+                assert(await evaluate(`!!document.querySelector('[role=dialog]')`), 'setting modal stays open while running (Escape ignored)');
+                await waitForEval(`document.querySelector('[role=dialog]')?.innerText.includes('Command completed')`, 'setting result presented in modal');
+                assert(await evaluate(`!!document.querySelector('[role=dialog]')`), 'setting modal stays open after success');
+                await checkLayout(`setting result dialog ${width}`);
+                await click('.pf-v6-c-modal-box button', 'Close');
+                await waitForEval(`!document.querySelector('[role=dialog]')`, 'setting modal closes');
             }
         }
+        // Rescan reports its outcome in a modal: success banner + output, or error.
+        // Exact match: the header's "Rescan all" button precedes it in the DOM.
+        await click('button', 'Rescan', true);
+        await waitForEval(`document.querySelector('[role=dialog]')?.innerText.includes('Command completed')`, 'rescan success presented in modal');
+        assert(await evaluate(`document.querySelector('[role=dialog]').innerText.includes('Mock command completed')`), 'rescan output shown');
+        await checkLayout(`rescan dialog ${width}`);
+        await click('.pf-v6-c-modal-box button', 'Close');
+        await waitForEval(`!document.querySelector('[role=dialog]')`, 'rescan modal closes');
         await click('button[aria-label="Actions"]', '');
         await checkLayout(`controller action menu ${width}`);
         await click('.pf-v6-c-menu__item', 'Show debug token');
@@ -176,6 +217,13 @@ try {
         await checkLayout(`populated command log ${width}`);
         if (width === 1440 || width === 390) {
             await click('.pf-v6-c-nav__link', 'Dashboard');
+            if (width === 1440) {
+                // Header "Rescan all" uses the same result modal.
+                await click('button', 'Rescan all');
+                await waitForEval(`document.querySelector('[role=dialog]')?.innerText.includes('Command completed')`, 'rescan-all success presented in modal');
+                await click('.pf-v6-c-modal-box button', 'Close');
+                await waitForEval(`!document.querySelector('[role=dialog]')`, 'rescan-all modal closes');
+            }
             const { data } = await call('browsingContext.captureScreenshot', { context });
             const screenshot = path.join(outdir, `dashboard-${width}.png`);
             await fs.writeFile(screenshot, Buffer.from(data, 'base64'));
@@ -186,6 +234,21 @@ try {
         await navigate(scenario);
         await checkLayout(scenario);
     }
+    // Command failures must be presented inside the modal (rescan + settings).
+    await navigate('?failcmd');
+    await click('button.pf-v6-c-card__clickable-action', '');
+    await click('button', 'Rescan', true);
+    await waitForEval(`document.querySelector('[role=dialog]')?.innerText.includes('Command failed')`, 'rescan failure presented in modal');
+    await click('.pf-v6-c-modal-box button', 'Close');
+    await waitForEval(`!document.querySelector('[role=dialog]')`, 'rescan failure modal closes');
+    await click('.pf-v6-c-tabs__link', 'Settings');
+    await click('button', 'Edit');
+    await evaluate(`(() => { const el = document.querySelector('[role=dialog] input'); const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set; setter.call(el, '25/75'); el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+    await settle();
+    await click('.pf-v6-c-modal-box button', 'Apply');
+    await waitForEval(`document.querySelector('[role=dialog]')?.innerText.includes('Mock command failure')`, 'setting failure presented in modal');
+    await click('.pf-v6-c-modal-box button', 'Cancel');
+    await waitForEval(`!document.querySelector('[role=dialog]')`, 'setting failure modal closes');
     await navigate('');
     await evaluate('document.documentElement.classList.add("pf-v6-theme-dark")');
     await checkLayout('dark dashboard');

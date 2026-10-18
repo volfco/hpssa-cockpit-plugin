@@ -14,3 +14,5 @@ Provided / inferred / assumed constraints for this project:
 - rpm/deb must be installable with distro-packaged `cockpit-bridge` only; floor stays `cockpit-bridge >= 137` per the manifest assumption above.
 
 - UI validation uses isolated mocked hardware at 1440, 1024, 768, and 390px widths; no storage mutations are performed. The browser check requires Firefox WebDriver BiDi and Node >=22; production runtime requirements are unchanged.
+- After a command completes, its modal must stay open until the user closes it; while a command runs, Escape/backdrop cannot dismiss it (product requirement — the only escape from a hung ssacli command is the disabled Cancel state, no spawn timeout exists).
+- Background (dialog-triggered) discovery refreshes fail silent-by-design: stale data stays on screen rather than unmounting an open result dialog; the foreground load path (first load / Retry) still shows the error alert.

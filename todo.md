@@ -20,3 +20,4 @@
 - [x] SEP/backplane targets: show + flash + configurationmode wrappers; Show SEP devices / Show backplanes / Update SEP firmware… UI. Ref: src/service.ts, src/components/actions.tsx.
 - [x] Targeting by serialnumber= (`ctrlSnTarget`, `showControllerDetailBySerial`, `showEnclosureBySerial`) and ssdphysicaldrive (`showSsdDrives`); ch= helper `ctrlChTarget`; remaining ops stay on the raw command dialog. Ref: src/service.ts.
 - [x] encode preservedata= → `encEncode` + LD ⋮ → Encryption → Encode volume…. Ref: src/components/actions.tsx ldActions.
+- [ ] cockpit.spawn has no timeout/cancel: with Escape blocked during a run, a hung ssacli leaves its modal open indefinitely (buttons disabled). Add a spawn timeout + cancel affordance if this is ever observed in the field. Ref: decisions.md D16.

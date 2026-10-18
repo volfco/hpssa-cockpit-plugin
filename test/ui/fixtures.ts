@@ -39,5 +39,14 @@ export const overview: SystemOverview = {
 export default {
     gettext: (s: string) => s,
     format: (s: string, ...args: string[]) => s.replace(/\$(\d+)/g, (_match, i) => args[Number(i)] ?? ''),
-    spawn: () => Promise.resolve('Mock command completed successfully.\n' + 'output '.repeat(80)),
+    // modify= commands are delayed so the UI check can observe the in-flight
+    // modal state (busy, Escape ignored) before the result renders. With
+    // ?failcmd, modifying/rescan commands fail so failure presentation is tested.
+    spawn: (args: string[]) => new Promise<string>((resolve, reject) => {
+        const out = 'Mock command completed successfully.\n' + 'output '.repeat(80);
+        const fail = window.location.search.includes('failcmd') &&
+            (args.includes('modify') || args.includes('rescan'));
+        setTimeout(() => fail ? reject(new Error('Mock command failure')) : resolve(out),
+                   args.includes('modify') ? 400 : 0);
+    }),
 };

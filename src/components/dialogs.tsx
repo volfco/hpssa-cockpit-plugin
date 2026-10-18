@@ -112,7 +112,9 @@ export function FormDialog({
         <Modal
             variant={ModalVariant.medium}
             isOpen={isOpen}
-            onClose={onClose}
+            // Keep the modal open until the command completes so its result can
+            // be shown; Escape/backdrop dismissal is ignored while running.
+            onClose={() => { if (!busy) onClose(); }}
             aria-labelledby={`${dialogId}-title`}
             {...defined({ 'aria-describedby': description ? `${dialogId}-description` : undefined })}
         >
@@ -299,7 +301,7 @@ export function ConfirmDialog({
     const canConfirm = !busy && (!requireTyped || typed === requireTyped);
 
     return (
-        <Modal variant={ModalVariant.small} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`}>
+        <Modal variant={ModalVariant.small} isOpen={isOpen} onClose={() => { if (!busy) onClose(); }} aria-labelledby={`${dialogId}-title`}>
             <ModalHeader title={title} labelId={`${dialogId}-title`} titleIconVariant={confirmVariant === 'danger' ? 'danger' : 'warning'} />
             <ModalBody>
                 <Stack hasGutter>
@@ -370,7 +372,9 @@ export function OutputDialog({ isOpen, onClose, title, fetch }: OutputDialogProp
     }, [isOpen, fetch]);
 
     return (
-        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`}>
+        // Same rule as the other command dialogs: keep it open until the
+        // command completes so the outcome can be presented.
+        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={() => { if (!busy) onClose(); }} aria-labelledby={`${dialogId}-title`}>
             <ModalHeader title={title} labelId={`${dialogId}-title`} />
             <ModalBody>
                 {busy && <Spinner aria-label={_("Loading command output")} />}
@@ -379,6 +383,9 @@ export function OutputDialog({ isOpen, onClose, title, fetch }: OutputDialogProp
                         <CodeBlock><CodeBlockCode>{error}</CodeBlockCode></CodeBlock>
                     </Alert>
                 )}
+                {!busy && !error && output && (
+                    <Alert variant="success" title={_("Command completed")} isInline />
+                )}
                 {output && (
                     <CodeBlock>
                         <CodeBlockCode>{output}</CodeBlockCode>
@@ -386,7 +393,7 @@ export function OutputDialog({ isOpen, onClose, title, fetch }: OutputDialogProp
                 )}
             </ModalBody>
             <ModalFooter>
-                <Button variant="primary" onClick={onClose}>{_("Close")}</Button>
+                <Button variant="primary" onClick={onClose} isDisabled={busy}>{_("Close")}</Button>
             </ModalFooter>
         </Modal>
     );
@@ -435,7 +442,7 @@ export function RawCommandDialog({ isOpen, onClose, onRun }: RawCommandDialogPro
     };
 
     return (
-        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`}>
+        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={() => { if (!busy) onClose(); }} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`}>
             <ModalHeader
                 title={_("Run ssacli command")}
                 descriptorId={`${dialogId}-description`}
