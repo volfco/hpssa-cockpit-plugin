@@ -14,8 +14,8 @@
   <launchable type="cockpit-manifest">hpssa</launchable>
   <url type="homepage">https://github.com/volfco/hpssa-cockpit-plugin</url>
   <url type="bugtracker">https://github.com/volfco/hpssa-cockpit-plugin/issues</url>
-  <update_contact>cockpit-devel_AT_lists.fedorahosted.org</update_contact>
-  <developer id="org.cockpit-project">
-    <name>Cockpit Project</name>
+  <update_contact>volfco_AT_users.noreply.github.com</update_contact>
+  <developer>
+    <name>volfco</name>
   </developer>
 </component>
