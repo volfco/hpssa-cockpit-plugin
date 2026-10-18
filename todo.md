@@ -15,6 +15,8 @@
 
 ## Done
 
+- [x] Repair PF6 page/sidebar sizing, load raw table/grid and utility styles, and polish dashboard, controller tabs, settings, dialogs, menus, and command log. Mocked Firefox checks cover desktop/mobile layouts and interactions. Ref: decisions.md D14/D15, test/ui-check.mjs.
+
 - [x] SEP/backplane targets: show + flash + configurationmode wrappers; Show SEP devices / Show backplanes / Update SEP firmware… UI. Ref: src/service.ts, src/components/actions.tsx.
 - [x] Targeting by serialnumber= (`ctrlSnTarget`, `showControllerDetailBySerial`, `showEnclosureBySerial`) and ssdphysicaldrive (`showSsdDrives`); ch= helper `ctrlChTarget`; remaining ops stay on the raw command dialog. Ref: src/service.ts.
 - [x] encode preservedata= → `encEncode` + LD ⋮ → Encryption → Encode volume…. Ref: src/components/actions.tsx ldActions.

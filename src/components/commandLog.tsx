@@ -4,7 +4,6 @@ import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.
 import { Switch } from "@patternfly/react-core/dist/esm/components/Switch/index.js";
 import { Label } from "@patternfly/react-core/dist/esm/components/Label/index.js";
 import { EmptyState, EmptyStateBody } from "@patternfly/react-core/dist/esm/components/EmptyState/index.js";
-import { EmptyStateHeader } from "@patternfly/react-core/dist/esm/components/EmptyState/EmptyStateHeader.js";
 import { Card, CardBody } from "@patternfly/react-core/dist/esm/components/Card/index.js";
 import { CodeBlock, CodeBlockCode } from "@patternfly/react-core/dist/esm/components/CodeBlock/index.js";
 import { ExpandableSection } from "@patternfly/react-core/dist/esm/components/ExpandableSection/index.js";
@@ -150,11 +149,11 @@ export function CommandLog() {
                 >
                     <FlexItem>
                         <Title headingLevel="h2" size="xl">{_("Command log")}</Title>
-                        <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm">
+                        <p className="pf-v6-u-color-200 pf-v6-u-font-size-sm pf-v6-u-mt-xs">
                             {cockpit.format(_("$0 entries"), log.length)}
-                        </span>
+                        </p>
                     </FlexItem>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
                         <Switch
                             id="hpssa-log-include-discovery"
                             label={_("Include read-only discovery")}
@@ -185,8 +184,7 @@ export function CommandLog() {
             {sorted.length === 0
                 ? (
                     <StackItem>
-                        <EmptyState icon={HistoryIcon} headingLevel="h2">
-                            <EmptyStateHeader titleText={_("No commands logged yet")} headingLevel="h3" />
+                        <EmptyState icon={HistoryIcon} titleText={_("No commands logged yet")} headingLevel="h3">
                             <EmptyStateBody>
                                 {_("Modify a setting or run a command from the toolbar to see it logged here.")}
                             </EmptyStateBody>

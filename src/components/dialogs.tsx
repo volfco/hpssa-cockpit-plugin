@@ -66,6 +66,7 @@ export function FormDialog({
     submitLabel = _("Apply"), submitVariant = 'primary',
     onSubmit, onSuccess,
 }: FormDialogProps) {
+    const dialogId = React.useId();
     const [values, setValues] = React.useState<FormValues>({});
     const [busy, setBusy] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
@@ -112,8 +113,10 @@ export function FormDialog({
             variant={ModalVariant.medium}
             isOpen={isOpen}
             onClose={onClose}
+            aria-labelledby={`${dialogId}-title`}
+            {...defined({ 'aria-describedby': description ? `${dialogId}-description` : undefined })}
         >
-            <ModalHeader title={title} description={description} />
+            <ModalHeader title={title} description={description} labelId={`${dialogId}-title`} descriptorId={`${dialogId}-description`} />
             <ModalBody>
                 {result
                     ? (
@@ -140,12 +143,12 @@ export function FormDialog({
                                 </Alert>
                             )}
                             {fields.filter(isVisible).map(f => (
-                                <FormGroup key={f.key} label={f.label} fieldId={f.key} {...defined({ isRequired: f.required })}>
-                                    {renderField(f, values[f.key], v => set(f.key, v))}
+                                <FormGroup key={f.key} label={f.label} fieldId={`${dialogId}-${f.key}`} {...defined({ isRequired: f.required })}>
+                                    {renderField(f, values[f.key], v => set(f.key, v), `${dialogId}-${f.key}`)}
                                     {f.helper && (
                                         <FormHelperText>
                                             <HelperText>
-                                                <HelperTextItem>{f.helper}</HelperTextItem>
+                                                <HelperTextItem id={`${dialogId}-${f.key}-helper`}>{f.helper}</HelperTextItem>
                                             </HelperText>
                                         </FormHelperText>
                                     )}
@@ -179,13 +182,15 @@ export function FormDialog({
     );
 }
 
-function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues[string]) => void) {
+function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues[string]) => void, id: string) {
+    const accessibility = defined({ 'aria-describedby': f.helper ? `${id}-helper` : undefined, 'aria-required': f.required });
     switch (f.type) {
     case 'text':
     case 'password':
         return (
             <TextInput
-                id={f.key}
+                id={id}
+                {...accessibility}
                 type={f.type === 'password' ? 'password' : 'text'}
                 value={(value as string | undefined) ?? ''}
                 onChange={(_e, v) => set(v)}
@@ -195,7 +200,8 @@ function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues
     case 'number':
         return (
             <TextInput
-                id={f.key}
+                id={id}
+                {...accessibility}
                 type="number"
                 value={(value as number | string | undefined) ?? ''}
                 onChange={(_e, v) => set(v === '' ? undefined : Number(v))}
@@ -205,7 +211,8 @@ function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues
     case 'textarea':
         return (
             <TextArea
-                id={f.key}
+                id={id}
+                {...accessibility}
                 value={(value as string | undefined) ?? ''}
                 rows={4}
                 onChange={(_e, v) => set(v)}
@@ -215,7 +222,8 @@ function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues
     case 'select':
         return (
             <FormSelect
-                id={f.key}
+                id={id}
+                {...accessibility}
                 value={(value as string | undefined) ?? ''}
                 onChange={(_e, v) => set(v)}
             >
@@ -228,7 +236,8 @@ function renderField(f: FieldDef, value: FormValues[string], set: (v: FormValues
     case 'switch':
         return (
             <Switch
-                id={f.key}
+                id={id}
+                {...accessibility}
                 isChecked={Boolean(value)}
                 onChange={(_e, v) => set(v)}
                 label={_("Enabled")}
@@ -258,6 +267,7 @@ export function ConfirmDialog({
     confirmLabel = _("Confirm"), confirmVariant = 'danger',
     requireTyped, onConfirm, onSuccess,
 }: ConfirmDialogProps) {
+    const dialogId = React.useId();
     const [busy, setBusy] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
     const [result, setResult] = React.useState<string | null>(null);
@@ -289,8 +299,8 @@ export function ConfirmDialog({
     const canConfirm = !busy && (!requireTyped || typed === requireTyped);
 
     return (
-        <Modal variant={ModalVariant.small} isOpen={isOpen} onClose={onClose}>
-            <ModalHeader title={title} titleIconVariant={confirmVariant === 'danger' ? 'danger' : 'warning'} />
+        <Modal variant={ModalVariant.small} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`}>
+            <ModalHeader title={title} labelId={`${dialogId}-title`} titleIconVariant={confirmVariant === 'danger' ? 'danger' : 'warning'} />
             <ModalBody>
                 <Stack hasGutter>
                     {result
@@ -307,8 +317,8 @@ export function ConfirmDialog({
                     )}
                     {!result && requireTyped && (
                         <StackItem>
-                            <FormGroup label={cockpit.format(_("Type \"$0\" to confirm"), requireTyped)} fieldId="confirm-typed">
-                                <TextInput id="confirm-typed" value={typed} onChange={(_e, v) => setTyped(v)} />
+                            <FormGroup label={cockpit.format(_("Type \"$0\" to confirm"), requireTyped)} fieldId={`${dialogId}-confirm-typed`}>
+                                <TextInput id={`${dialogId}-confirm-typed`} value={typed} onChange={(_e, v) => setTyped(v)} />
                             </FormGroup>
                         </StackItem>
                     )}
@@ -344,6 +354,7 @@ interface OutputDialogProps {
 }
 
 export function OutputDialog({ isOpen, onClose, title, fetch }: OutputDialogProps) {
+    const dialogId = React.useId();
     const [output, setOutput] = React.useState<string>('');
     const [error, setError] = React.useState<string | null>(null);
     const [busy, setBusy] = React.useState(false);
@@ -359,10 +370,10 @@ export function OutputDialog({ isOpen, onClose, title, fetch }: OutputDialogProp
     }, [isOpen, fetch]);
 
     return (
-        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose}>
-            <ModalHeader title={title} />
+        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`}>
+            <ModalHeader title={title} labelId={`${dialogId}-title`} />
             <ModalBody>
-                {busy && <Spinner />}
+                {busy && <Spinner aria-label={_("Loading command output")} />}
                 {error && (
                     <Alert variant="danger" title={_("Command failed")} isInline>
                         <CodeBlock><CodeBlockCode>{error}</CodeBlockCode></CodeBlock>
@@ -393,6 +404,7 @@ interface RawCommandDialogProps {
 }
 
 export function RawCommandDialog({ isOpen, onClose, onRun }: RawCommandDialogProps) {
+    const dialogId = React.useId();
     const [cmd, setCmd] = React.useState('');
     const [busy, setBusy] = React.useState(false);
     const [output, setOutput] = React.useState<string | null>(null);
@@ -423,17 +435,21 @@ export function RawCommandDialog({ isOpen, onClose, onRun }: RawCommandDialogPro
     };
 
     return (
-        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose}>
+        <Modal variant={ModalVariant.large} isOpen={isOpen} onClose={onClose} aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-description`}>
             <ModalHeader
-title={_("Run ssacli command")}
-                         description={_("Execute any ssacli command. The 'ssacli' prefix is optional.")}
+                title={_("Run ssacli command")}
+                descriptorId={`${dialogId}-description`}
+                labelId={`${dialogId}-title`}
+                description={_("Execute any ssacli command. The 'ssacli' prefix is optional.")}
             />
             <ModalBody>
                 <Stack hasGutter>
                     <StackItem>
-                        <FormGroup label={_("Command")} fieldId="raw-cmd" isRequired>
+                        <FormGroup label={_("Command")} fieldId={`${dialogId}-raw-cmd`} isRequired>
                             <TextInput
-                                id="raw-cmd"
+                                id={`${dialogId}-raw-cmd`}
+                                aria-describedby={`${dialogId}-raw-cmd-helper`}
+                                isRequired
                                 value={cmd}
                                 placeholder="ctrl slot=1 show detail"
                                 onChange={(_e, v) => setCmd(v)}
@@ -441,7 +457,7 @@ title={_("Run ssacli command")}
                             />
                             <FormHelperText>
                                 <HelperText>
-                                    <HelperTextItem>
+                                    <HelperTextItem id={`${dialogId}-raw-cmd-helper`}>
                                         {_("Examples: \"ctrl slot=1 show detail\", \"ctrl slot=1 modify cacheratio=25/75\", \"controller serialnumber=PEYHC0DRHDE3VF show config detail\"")}
                                     </HelperTextItem>
                                 </HelperText>

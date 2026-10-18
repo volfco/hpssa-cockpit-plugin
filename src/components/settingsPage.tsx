@@ -1,7 +1,6 @@
 import React from 'react';
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Button } from "@patternfly/react-core/dist/esm/components/Button/index.js";
-import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Stack, StackItem } from "@patternfly/react-core/dist/esm/layouts/Stack/index.js";
 import {
     DataList, DataListItem, DataListItemRow, DataListItemCells,
@@ -53,6 +52,7 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ controller, settings, reload }: SettingsPageProps) {
+    const settingsId = React.useId();
     const [editing, setEditing] = React.useState<SettingDef | null>(null);
 
     // Preserve the order of first appearance for each group.
@@ -69,38 +69,41 @@ export function SettingsPage({ controller, settings, reload }: SettingsPageProps
     return (
         <>
             <Stack hasGutter>
-                {groups.map((g, idx) => (
+                {groups.map(g => (
                     <StackItem key={g.name}>
-                        {idx > 0 && <Divider className="pf-v6-u-my-md" />}
                         <Title headingLevel="h3" size="lg" className="pf-v6-u-mb-sm">{g.name}</Title>
                         <DataList aria-label={g.name} isCompact>
                             {g.items.map(s => (
-                                <DataListItem key={s.key} aria-labelledby={`setting-${s.key}`}>
+                                <DataListItem key={s.key} aria-labelledby={`${settingsId}-setting-${s.key}`}>
                                     <DataListItemRow>
                                         <DataListItemCells
                                             dataListCells={[
                                                 <DataListCell key="main">
-                                                    <span id={`setting-${s.key}`} className="pf-v6-u-font-weight-bold">
+                                                    <p id={`${settingsId}-setting-${s.key}`} className="pf-v6-u-font-weight-bold">
                                                         {s.label}
-                                                    </span>
+                                                    </p>
+                                                    <p className="pf-v6-u-color-200 pf-v6-u-font-size-sm pf-v6-u-mt-xs">
+                                                        {s.description}
+                                                    </p>
+                                                </DataListCell>,
+                                                <DataListCell key="value">
                                                     <span className="hpssa-setting-value">
                                                         {s.currentValue(controller.properties)}
-                                                    </span>
-                                                    <span className="pf-v6-u-color-200 pf-v6-u-font-size-sm">
-                                                        {s.description}
                                                     </span>
                                                 </DataListCell>,
                                             ]}
                                         />
                                         <DataListAction
-                                            aria-labelledby={`setting-${s.key} setting-${s.key}-edit`}
-                                            id={`setting-${s.key}-edit`}
-                                            aria-label={_("Edit setting")}
+                                            id={`${settingsId}-setting-${s.key}-action`}
+                                            aria-labelledby={`${settingsId}-setting-${s.key} ${settingsId}-setting-${s.key}-edit`}
+                                            aria-label={cockpit.format(_("Edit $0"), s.label)}
                                         >
                                             <Button
+                                                id={`${settingsId}-setting-${s.key}-edit`}
                                                 variant="secondary"
                                                 size="sm"
                                                 icon={<PencilAltIcon />}
+                                                aria-label={cockpit.format(_("Edit $0"), s.label)}
                                                 onClick={() => setEditing(s)}
                                             >
                                                 {_("Edit")}

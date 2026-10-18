@@ -12,6 +12,7 @@
   "scripts": {
     "watch": "ESBUILD_WATCH='true' ./build.js",
     "build": "./build.js",
+    "test:ui": "node test/ui-check.mjs",
     "eslint": "eslint src/",
     "eslint:fix": "eslint --fix src/",
     "stylelint": "stylelint src/*.{css,scss}",

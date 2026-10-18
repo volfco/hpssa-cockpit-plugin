@@ -54,7 +54,10 @@ export function ActionMenu({ items, label = _("Actions") }: ActionMenuProps) {
             isOpen={open}
             onSelect={() => setOpen(false)}
             onOpenChange={setOpen}
-            popperProps={{ position: 'right' }}
+            popperProps={{ position: 'right', appendTo: () => document.body }}
+            maxMenuHeight="min(28rem, 60vh)"
+            className="hpssa-action-menu"
+            shouldFocusToggleOnSelect
             toggle={(toggleRef) => (
                 <MenuToggle
                     ref={toggleRef}

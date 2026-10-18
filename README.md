@@ -75,6 +75,27 @@ remove manually the symlink:
 
     rm ~/.local/share/cockpit/starter-kit
 
+# Checking the storage UI
+
+The isolated browser check covers the dashboard, all controller tabs, expanded
+physical drives, settings, action menus, dialogs, command log, and empty/error
+states at desktop, tablet, and phone widths. All hardware calls are mocked.
+It requires Node.js 22 or newer and Firefox with WebDriver BiDi enabled.
+
+Start a separate headless Firefox instance, then run the check in another terminal:
+
+```sh
+mkdir -p /tmp/hpssa-ui-profile
+timeout 300s firefox --headless --no-remote --profile /tmp/hpssa-ui-profile --remote-debugging-port 9222
+```
+
+```sh
+npm run test:ui
+```
+
+The check prints the temporary directory containing screenshots. To use a different
+BiDi endpoint, set `HPSSA_BIDI_URL` (default `ws://127.0.0.1:9222/session`).
+
 # Running eslint
 
 Cockpit Starter Kit uses [ESLint](https://eslint.org/) to automatically check

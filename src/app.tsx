@@ -15,7 +15,6 @@ import { Page, PageSection } from "@patternfly/react-core/dist/esm/components/Pa
 import { Nav, NavItem, NavList } from "@patternfly/react-core/dist/esm/components/Nav/index.js";
 import { Title } from "@patternfly/react-core/dist/esm/components/Title/index.js";
 import { Badge } from "@patternfly/react-core/dist/esm/components/Badge/index.js";
-import { Divider } from "@patternfly/react-core/dist/esm/components/Divider/index.js";
 import { Breadcrumb, BreadcrumbItem } from "@patternfly/react-core/dist/esm/components/Breadcrumb/index.js";
 import { Tab, Tabs, TabTitleText } from "@patternfly/react-core/dist/esm/components/Tabs/index.js";
 
@@ -67,7 +66,7 @@ function statusIcon(status: string) {
 }
 
 function StatusLabel({ status }: { status: string }) {
-    if (!status) return null;
+    if (!status) return <span className="pf-v6-u-color-200">—</span>;
     return (
         <Label
             color={statusColor(status)}
@@ -99,17 +98,19 @@ function PropertyTable({ properties }: { properties: KeyValue }) {
     if (entries.length === 0) return null;
 
     return (
-        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Properties")}>
-            <TableCaption text={_("Properties")} />
-            <tbody className="pf-v6-c-table__tbody">
-                {entries.map(([key, value]) => (
-                    <tr className="pf-v6-c-table__tr" key={key}>
-                        <td className="pf-v6-c-table__td"><strong>{key}</strong></td>
-                        <td className="pf-v6-c-table__td">{value}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
+        <div className="hpssa-table-region" role="region" aria-label={_("Properties")} tabIndex={0}>
+            <table className="pf-v6-c-table pf-m-compact hpssa-property-table" aria-label={_("Properties")}>
+                <TableCaption text={_("Properties")} />
+                <tbody className="pf-v6-c-table__tbody">
+                    {entries.map(([key, value]) => (
+                        <tr className="pf-v6-c-table__tr" key={key}>
+                            <th className="pf-v6-c-table__th" scope="row">{key}</th>
+                            <td className="pf-v6-c-table__td">{value}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
     );
 }
 
@@ -119,27 +120,29 @@ function SensorTable({ sensors }: { sensors: Sensor[] }) {
     return (
         <>
             <Title headingLevel="h4" size="md" className="pf-v6-u-mt-md">{_("Sensors")}</Title>
-            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Sensors")}>
-                <TableCaption text={_("Sensors")} />
-                <thead className="pf-v6-c-table__thead">
-                    <tr className="pf-v6-c-table__tr">
-                        <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Current")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Max")}</th>
-                    </tr>
-                </thead>
-                <tbody className="pf-v6-c-table__tbody">
-                    {sensors.map(s => (
-                        <tr className="pf-v6-c-table__tr" key={s.id}>
-                            <td className="pf-v6-c-table__td">{s.id}</td>
-                            <td className="pf-v6-c-table__td">{s.location}</td>
-                            <td className="pf-v6-c-table__td">{s.currentValue}</td>
-                            <td className="pf-v6-c-table__td">{s.maxValue}</td>
+            <div className="hpssa-table-region" role="region" aria-label={_("Sensors")} tabIndex={0}>
+                <table className="pf-v6-c-table pf-m-compact pf-m-grid-lg" aria-label={_("Sensors")}>
+                    <TableCaption text={_("Sensors")} />
+                    <thead className="pf-v6-c-table__thead">
+                        <tr className="pf-v6-c-table__tr">
+                            <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Current")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Max")}</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="pf-v6-c-table__tbody">
+                        {sensors.map(s => (
+                            <tr className="pf-v6-c-table__tr" key={s.id}>
+                                <td className="pf-v6-c-table__td" data-label={_("ID")}>{s.id}</td>
+                                <td className="pf-v6-c-table__td" data-label={_("Location")}>{s.location}</td>
+                                <td className="pf-v6-c-table__td" data-label={_("Current")}>{s.currentValue}</td>
+                                <td className="pf-v6-c-table__td" data-label={_("Max")}>{s.maxValue}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
         </>
     );
 }
@@ -150,48 +153,50 @@ function StatusOverviewTable({ controllers, overview, onSelect }: {
     onSelect: (slot: string) => void;
 }) {
     return (
-        <table className="pf-v6-c-table pf-m-compact pf-m-grid-md" aria-label={_("Quick status")}>
-            <TableCaption text={_("Quick status")} />
-            <thead className="pf-v6-c-table__thead">
-                <tr className="pf-v6-c-table__tr">
-                    <th className="pf-v6-c-table__th" scope="col">{_("Controller")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Controller Status")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Cache")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Battery")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Arrays")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Logical Drives")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Physical Drives")}</th>
-                    <th className="pf-v6-c-table__th" scope="col">{_("Enclosures")}</th>
-                </tr>
-            </thead>
-            <tbody className="pf-v6-c-table__tbody">
-                {controllers.map(c => {
-                    const arrs = overview.arrays.filter(a => a.controllerSlot === c.slot);
-                    const lds = overview.logicalDrives.filter(ld => ld.controllerSlot === c.slot);
-                    const pds = overview.physicalDrives.filter(pd => pd.controllerSlot === c.slot);
-                    const encs = overview.enclosures.filter(e => e.controllerSlot === c.slot);
-                    return (
-                        <tr
-                            className="pf-v6-c-table__tr pf-m-clickable"
-                            key={c.slot}
-                            tabIndex={0}
-                            aria-label={cockpit.format(_("Open controller $0"), c.name)}
-                            onClick={() => onSelect(c.slot)}
-                            onKeyDown={rowKeyboardSelect(() => onSelect(c.slot))}
-                        >
-                            <td className="pf-v6-c-table__td">{c.name} (Slot {c.slot})</td>
-                            <td className="pf-v6-c-table__td"><StatusLabel status={c.status} /></td>
-                            <td className="pf-v6-c-table__td"><StatusLabel status={c.cacheStatus} /></td>
-                            <td className="pf-v6-c-table__td"><StatusLabel status={c.batteryStatus} /></td>
-                            <td className="pf-v6-c-table__td"><Badge isRead>{arrs.length}</Badge></td>
-                            <td className="pf-v6-c-table__td"><Badge isRead>{lds.length}</Badge></td>
-                            <td className="pf-v6-c-table__td"><Badge isRead>{pds.length}</Badge></td>
-                            <td className="pf-v6-c-table__td"><Badge isRead>{encs.length}</Badge></td>
-                        </tr>
-                    );
-                })}
-            </tbody>
-        </table>
+        <div className="hpssa-table-region" role="region" aria-label={_("Quick status")} tabIndex={0}>
+            <table className="pf-v6-c-table pf-m-compact pf-m-grid-lg" aria-label={_("Quick status")}>
+                <TableCaption text={_("Quick status")} />
+                <thead className="pf-v6-c-table__thead">
+                    <tr className="pf-v6-c-table__tr">
+                        <th className="pf-v6-c-table__th" scope="col">{_("Controller")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Controller Status")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Cache")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Battery")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Arrays")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Logical Drives")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Physical Drives")}</th>
+                        <th className="pf-v6-c-table__th" scope="col">{_("Enclosures")}</th>
+                    </tr>
+                </thead>
+                <tbody className="pf-v6-c-table__tbody">
+                    {controllers.map(c => {
+                        const arrs = overview.arrays.filter(a => a.controllerSlot === c.slot);
+                        const lds = overview.logicalDrives.filter(ld => ld.controllerSlot === c.slot);
+                        const pds = overview.physicalDrives.filter(pd => pd.controllerSlot === c.slot);
+                        const encs = overview.enclosures.filter(e => e.controllerSlot === c.slot);
+                        return (
+                            <tr
+                                className="pf-v6-c-table__tr pf-m-clickable"
+                                key={c.slot}
+                                tabIndex={0}
+                                aria-label={cockpit.format(_("Open controller $0"), c.name)}
+                                onClick={() => onSelect(c.slot)}
+                                onKeyDown={rowKeyboardSelect(() => onSelect(c.slot))}
+                            >
+                                <td className="pf-v6-c-table__td" data-label={_("Controller")}>{c.name} (Slot {c.slot})</td>
+                                <td className="pf-v6-c-table__td" data-label={_("Controller Status")}><StatusLabel status={c.status} /></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Cache")}><StatusLabel status={c.cacheStatus} /></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Battery")}><StatusLabel status={c.batteryStatus} /></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Arrays")}><Badge isRead>{arrs.length}</Badge></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Logical Drives")}><Badge isRead>{lds.length}</Badge></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Physical Drives")}><Badge isRead>{pds.length}</Badge></td>
+                                <td className="pf-v6-c-table__td" data-label={_("Enclosures")}><Badge isRead>{encs.length}</Badge></td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+        </div>
     );
 }
 
@@ -208,7 +213,7 @@ function PhysicalDriveDetails({ pd }: { pd: PhysicalDrive }) {
 
     return (
         <div className="hpssa-pd-details">
-            <DescriptionList isHorizontal isCompact columnModifier={{ default: '2Col', lg: '3Col' }}>
+            <DescriptionList isHorizontal isCompact columnModifier={{ default: '1Col', md: '2Col', xl: '3Col' }}>
                 {detail(_("Firmware"), pd.firmwareRevision)}
                 {detail(_("WWID"), pd.wwid)}
                 {detail(_("Drive Type"), pd.driveType)}
@@ -236,6 +241,7 @@ function PhysicalDriveDetails({ pd }: { pd: PhysicalDrive }) {
 
 function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reload: () => void }) {
     const [expanded, setExpanded] = React.useState<Set<string>>(new Set());
+    const tableId = React.useId();
     const dialogs = useDialogs(reload);
 
     const toggle = (id: string) => {
@@ -249,69 +255,69 @@ function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reloa
 
     return (
         <>
-            <table className="pf-v6-c-table pf-m-compact pf-m-grid-md pf-m-expandable" aria-label={_("Physical drives")}>
-                <TableCaption text={_("Physical drives")} />
-                <thead className="pf-v6-c-table__thead">
-                    <tr className="pf-v6-c-table__tr">
-                        <th className="pf-v6-c-table__th" scope="col" />
-                        <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Status")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Type")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Size")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Model")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Serial")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
-                        <th className="pf-v6-c-table__th" scope="col">{_("Temp")}</th>
-                        <th className="pf-v6-c-table__th" scope="col" />
-                    </tr>
-                </thead>
-                {drives.map(pd => {
-                    const key = `${pd.controllerSlot}-${pd.id}`;
-                    const isOpen = expanded.has(key);
-                    return (
-                        <tbody
-                            className={`pf-v6-c-table__tbody ${isOpen ? 'pf-m-expanded' : ''}`}
-                            key={key}
-                        >
-                            <tr className="pf-v6-c-table__tr pf-m-clickable">
-                                <td className="pf-v6-c-table__td hpssa-toggle-cell">
-                                    <Button
-                                        variant="plain"
-                                        aria-label={isOpen ? _("Collapse drive details") : _("Expand drive details")}
-                                        aria-expanded={isOpen}
-                                        onClick={e => { e.stopPropagation(); toggle(key) }}
-                                        icon={isOpen ? <AngleDownIcon /> : <AngleRightIcon />}
-                                    />
-                                </td>
-                                <td className="pf-v6-c-table__td">
-                                    <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                                        <HddIcon />
-                                        <span>{pd.id}</span>
-                                    </Flex>
-                                </td>
-                                <td className="pf-v6-c-table__td"><StatusLabel status={pd.status} /></td>
-                                <td className="pf-v6-c-table__td">{pd.interfaceType || pd.driveType}</td>
-                                <td className="pf-v6-c-table__td">{pd.size}</td>
-                                <td className="pf-v6-c-table__td">{pd.model}</td>
-                                <td className="pf-v6-c-table__td">{pd.serialNumber}</td>
-                                <td className="pf-v6-c-table__td">{pd.port}:{pd.box}:{pd.bay}</td>
-                                <td className="pf-v6-c-table__td">{pd.temperature ? `${pd.temperature}°C` : '-'}</td>
-                                <td className="pf-v6-c-table__td hpssa-row-actions">
-                                    <ActionMenu items={pdActions(pd, dialogs)} />
-                                </td>
-                            </tr>
-                            {isOpen && (
-                                <tr className="pf-v6-c-table__tr hpssa-pd-details-row">
-                                    <td className="pf-v6-c-table__td" />
-                                    <td className="pf-v6-c-table__td" colSpan={9}>
-                                        <PhysicalDriveDetails pd={pd} />
+            <div className="hpssa-table-region" role="region" aria-label={_("Physical drives")} tabIndex={0}>
+                <table className="pf-v6-c-table pf-m-compact pf-m-grid-lg pf-m-expandable" aria-label={_("Physical drives")}>
+                    <TableCaption text={_("Physical drives")} />
+                    <thead className="pf-v6-c-table__thead">
+                        <tr className="pf-v6-c-table__tr">
+                            <th className="pf-v6-c-table__th" scope="col" />
+                            <th className="pf-v6-c-table__th" scope="col">{_("ID")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Status")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Type")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Size")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Model")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Serial")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Location")}</th>
+                            <th className="pf-v6-c-table__th" scope="col">{_("Temp")}</th>
+                            <th className="pf-v6-c-table__th" scope="col" />
+                        </tr>
+                    </thead>
+                    {drives.map(pd => {
+                        const key = `${pd.controllerSlot}-${pd.id}`;
+                        const isOpen = expanded.has(key);
+                        return (
+                            <tbody
+                                className={`pf-v6-c-table__tbody ${isOpen ? 'pf-m-expanded' : ''}`}
+                                key={key}
+                            >
+                                <tr className="pf-v6-c-table__tr">
+                                    <td className="pf-v6-c-table__td hpssa-toggle-cell">
+                                        <Button
+                                            variant="plain"
+                                            aria-label={cockpit.format(isOpen ? _("Collapse drive $0 details") : _("Expand drive $0 details"), pd.id)}
+                                            aria-expanded={isOpen}
+                                            aria-controls={`${tableId}-${key}`}
+                                            onClick={e => { e.stopPropagation(); toggle(key) }}
+                                            icon={isOpen ? <AngleDownIcon /> : <AngleRightIcon />}
+                                        />
+                                    </td>
+                                    <td className="pf-v6-c-table__td" data-label={_("ID")}>
+                                        <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                            <HddIcon />
+                                            <span>{pd.id}</span>
+                                        </Flex>
+                                    </td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Status")}><StatusLabel status={pd.status} /></td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Type")}>{pd.interfaceType || pd.driveType}</td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Size")}>{pd.size}</td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Model")}>{pd.model}</td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Serial")}>{pd.serialNumber}</td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Location")}>{pd.port}:{pd.box}:{pd.bay}</td>
+                                    <td className="pf-v6-c-table__td" data-label={_("Temp")}>{pd.temperature ? `${pd.temperature}°C` : '-'}</td>
+                                    <td className="pf-v6-c-table__td hpssa-row-actions">
+                                        <ActionMenu items={pdActions(pd, dialogs)} />
                                     </td>
                                 </tr>
-                            )}
-                        </tbody>
-                    );
-                })}
-            </table>
+                                <tr id={`${tableId}-${key}`} hidden={!isOpen} className="pf-v6-c-table__tr hpssa-pd-details-row">
+                                    <td className="pf-v6-c-table__td" colSpan={10}>
+                                        {isOpen && <PhysicalDriveDetails pd={pd} />}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        );
+                    })}
+                </table>
+            </div>
             {dialogs.node}
         </>
     );
@@ -319,19 +325,16 @@ function PhysicalDriveTable({ drives, reload }: { drives: PhysicalDrive[]; reloa
 
 function ControllerCard({ controller, onSelect }: { controller: Controller; onSelect: () => void }) {
     return (
-        <Card isClickable isSelectable onClick={onSelect}>
+        <Card isClickable className="hpssa-controller-card">
             <CardHeader
-                actions={{
-                    actions: <StatusLabel status={controller.status || controller.cacheStatus} />,
-                    hasNoOffset: false
-                }}
+                hasWrap
                 selectableActions={{
                     onClickAction: onSelect,
                     selectableActionId: `ctrl-${controller.slot}`,
                     selectableActionAriaLabel: controller.name
                 }}
             >
-                <Flex alignItems={{ default: 'alignItemsCenter' }}>
+                <Flex flexWrap={{ default: 'nowrap' }} alignItems={{ default: 'alignItemsCenter' }}>
                     <ServerIcon />
                     <FlexItem>
                         <Title headingLevel="h3" size="lg">{controller.name}</Title>
@@ -339,11 +342,12 @@ function ControllerCard({ controller, onSelect }: { controller: Controller; onSe
                             {_("Slot")} {controller.slot}
                             {controller.serialNumber && ` · ${_("SN")}: ${controller.serialNumber}`}
                         </span>
+                        <div className="pf-v6-u-mt-sm"><StatusLabel status={controller.status || controller.cacheStatus} /></div>
                     </FlexItem>
                 </Flex>
             </CardHeader>
             <CardBody>
-                <DescriptionList isHorizontal isCompact columnModifier={{ default: '2Col' }}>
+                <DescriptionList isHorizontal isCompact columnModifier={{ default: '1Col' }}>
                     <DescriptionListGroup>
                         <DescriptionListTerm>{_("Controller Status")}</DescriptionListTerm>
                         <DescriptionListDescription>
@@ -398,12 +402,13 @@ function EnclosureCard({ enclosure }: { enclosure: Enclosure }) {
     return (
         <Card isCompact>
             <CardHeader
+                hasWrap
                 actions={{
                     actions: <StatusLabel status={enclosure.status} />,
                     hasNoOffset: false
                 }}
             >
-                <Flex alignItems={{ default: 'alignItemsCenter' }}>
+                <Flex flexWrap={{ default: 'nowrap' }} alignItems={{ default: 'alignItemsCenter' }}>
                     <ContainerNodeIcon />
                     <FlexItem>
                         <Title headingLevel="h4" size="md">{enclosure.name}</Title>
@@ -414,7 +419,7 @@ function EnclosureCard({ enclosure }: { enclosure: Enclosure }) {
                 </Flex>
             </CardHeader>
             <CardBody>
-                <DescriptionList isHorizontal isCompact columnModifier={{ default: '2Col' }}>
+                <DescriptionList isHorizontal isCompact columnModifier={{ default: '1Col' }}>
                     <DescriptionListGroup>
                         <DescriptionListTerm>{_("Drive Bays")}</DescriptionListTerm>
                         <DescriptionListDescription>{enclosure.driveBays}</DescriptionListDescription>
@@ -540,6 +545,7 @@ function LogicalDriveCard({ ld, reload }: { ld: LogicalDrive; reload: () => void
     return (
         <Card isCompact>
             <CardHeader
+                hasWrap
                 actions={{
                     actions: (
                         <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
@@ -562,7 +568,7 @@ function LogicalDriveCard({ ld, reload }: { ld: LogicalDrive; reload: () => void
             </CardHeader>
             {dialogs.node}
             <CardBody>
-                <DescriptionList isHorizontal isCompact columnModifier={{ default: '2Col' }}>
+                <DescriptionList isHorizontal isCompact columnModifier={{ default: '1Col', lg: '2Col' }}>
                     <DescriptionListGroup>
                         <DescriptionListTerm>{_("Fault Tolerance")}</DescriptionListTerm>
                         <DescriptionListDescription>{raidLabel}</DescriptionListDescription>
@@ -627,47 +633,49 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
 
     return (
         <>
-            <Breadcrumb className="pf-v6-u-mb-md">
-                <BreadcrumbItem onClick={onBack} to="#">{_("Dashboard")}</BreadcrumbItem>
-                <BreadcrumbItem isActive>{controller.name}</BreadcrumbItem>
-            </Breadcrumb>
+            <PageSection isFilled={false}>
+                <Breadcrumb className="pf-v6-u-mb-md">
+                    <BreadcrumbItem onClick={onBack} to="#">{_("Dashboard")}</BreadcrumbItem>
+                    <BreadcrumbItem isActive>{controller.name}</BreadcrumbItem>
+                </Breadcrumb>
 
-            <Flex
-                alignItems={{ default: 'alignItemsCenter' }}
-                spaceItems={{ default: 'spaceItemsMd' }}
-                flexWrap={{ default: 'wrap' }}
-                className="pf-v6-u-mb-md"
-            >
-                <Title headingLevel="h2" size="xl">{controller.name}</Title>
-                <FlexItem>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                        <StatusLabel status={controller.status} />
-                        {controller.cacheStatus && <StatusLabel status={controller.cacheStatus} />}
-                        {controller.batteryStatus && <StatusLabel status={controller.batteryStatus} />}
-                    </Flex>
-                </FlexItem>
-                <FlexItem align={{ default: 'alignRight' }}>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                        <Button
-                            variant="secondary"
-                            icon={<SyncIcon />}
-                            onClick={async () => {
-                                await rescanController(controller.slot);
-                                reload();
-                            }}
-                            size="sm"
-                        >
-                            {_("Rescan")}
-                        </Button>
-                        <ActionMenu items={controllerActions(controller, dialogs)} />
-                    </Flex>
-                </FlexItem>
-            </Flex>
+                <Flex
+                    alignItems={{ default: 'alignItemsCenter' }}
+                    spaceItems={{ default: 'spaceItemsMd' }}
+                    flexWrap={{ default: 'wrap' }}
+                    className="pf-v6-u-mb-md"
+                >
+                    <Title headingLevel="h2" size="xl">{controller.name}</Title>
+                    <FlexItem>
+                        <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                            <StatusLabel status={controller.status} />
+                            {controller.cacheStatus && <StatusLabel status={controller.cacheStatus} />}
+                            {controller.batteryStatus && <StatusLabel status={controller.batteryStatus} />}
+                        </Flex>
+                    </FlexItem>
+                    <FlexItem align={{ default: 'alignRight' }}>
+                        <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                            <Button
+                                variant="secondary"
+                                icon={<SyncIcon />}
+                                onClick={async () => {
+                                    await rescanController(controller.slot);
+                                    reload();
+                                }}
+                                size="sm"
+                            >
+                                {_("Rescan")}
+                            </Button>
+                            <ActionMenu items={controllerActions(controller, dialogs)} />
+                        </Flex>
+                    </FlexItem>
+                </Flex>
 
-            <Tabs activeKey={activeTab} onSelect={(_event, key) => setActiveTab(key)}>
+            </PageSection>
+            <Tabs usePageInsets tabListAriaLabel={_("Controller sections")} className="hpssa-controller-tabs" activeKey={activeTab} onSelect={(_event, key) => setActiveTab(key)}>
                 <Tab eventKey={0} title={<TabTitleText>{_("Overview")}</TabTitleText>}>
                     <PageSection>
-                        <DescriptionList isHorizontal columnModifier={{ default: '2Col' }}>
+                        <DescriptionList isHorizontal columnModifier={{ default: '1Col', lg: '2Col' }}>
                             <DescriptionListGroup>
                                 <DescriptionListTerm>{_("Slot")}</DescriptionListTerm>
                                 <DescriptionListDescription>{controller.slot}</DescriptionListDescription>
@@ -775,12 +783,12 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
                                         return (
                                             <StackItem key={arrayId}>
                                                 <ArraySection
-                                                slot={controller.slot}
-                                                arrayId={arrayId}
-                                                arrayEntries={arrayData.map(a => ({ id: a.id, type: a.arrayType, unusedSpace: a.unusedSpace }))}
-                                                lds={lds}
-                                                pds={pds}
-                                                reload={reload}
+                                                    slot={controller.slot}
+                                                    arrayId={arrayId}
+                                                    arrayEntries={arrayData.map(a => ({ id: a.id, type: a.arrayType, unusedSpace: a.unusedSpace }))}
+                                                    lds={lds}
+                                                    pds={pds}
+                                                    reload={reload}
                                                 />
                                             </StackItem>
                                         );
@@ -809,7 +817,7 @@ function ControllerDetail({ overview, controller, onBack, reload }: {
                                 <Alert variant="info" title={_("No enclosures found on this controller.")} isInline />
                             )
                             : (
-                                <Gallery hasGutter>
+                                <Gallery hasGutter minWidths={{ default: 'min(100%, 30rem)' }}>
                                     {enclosures.map((enc, idx) => (
                                         <EnclosureCard key={idx} enclosure={enc} />
                                     ))}
@@ -893,7 +901,7 @@ export const Application = () => {
                 isFilled
                 className="pf-v6-u-display-flex pf-v6-u-align-items-center pf-v6-u-justify-content-center"
             >
-                <Spinner size="xl" />
+                <Spinner size="xl" aria-label={_("Loading storage information")} />
             </PageSection>
         );
     } else if (error) {
@@ -918,6 +926,7 @@ export const Application = () => {
     } else if (view.level === 'controller' && selectedController) {
         content = (
             <ControllerDetail
+                key={selectedController.slot}
                 overview={overview}
                 controller={selectedController}
                 onBack={() => setView({ level: 'dashboard' })}
@@ -947,7 +956,7 @@ export const Application = () => {
                     : (
                         <Stack hasGutter>
                             <StackItem>
-                                <Gallery hasGutter>
+                                <Gallery hasGutter minWidths={{ default: 'min(100%, 30rem)' }}>
                                     {overview.controllers.map(c => (
                                         <ControllerCard
                                             key={c.slot}
@@ -966,7 +975,7 @@ export const Application = () => {
                                         <Title headingLevel="h3" size="md" className="pf-v6-u-mb-sm">
                                             {cockpit.format(_("Enclosures — $0"), ctrl.name)}
                                         </Title>
-                                        <Gallery hasGutter>
+                                        <Gallery hasGutter minWidths={{ default: 'min(100%, 30rem)' }}>
                                             {overview.enclosures
                                                     .filter(e => e.controllerSlot === slot)
                                                     .map((enc, idx) => (
@@ -977,15 +986,17 @@ export const Application = () => {
                                 );
                             })}
 
-                            <Divider className="pf-v6-u-my-lg" />
-
                             <StackItem>
                                 <Title headingLevel="h2" size="xl" className="pf-v6-u-mb-md">{_("Quick Status")}</Title>
-                                <StatusOverviewTable
-                                    controllers={overview.controllers}
-                                    overview={overview}
-                                    onSelect={openController}
-                                />
+                                <Card>
+                                    <CardBody>
+                                        <StatusOverviewTable
+                                            controllers={overview.controllers}
+                                            overview={overview}
+                                            onSelect={openController}
+                                        />
+                                    </CardBody>
+                                </Card>
                             </StackItem>
                         </Stack>
                     )}
@@ -994,10 +1005,10 @@ export const Application = () => {
     }
 
     return (
-        <Page>
+        <Page sidebar={null} className="hpssa-page ct-page-fill" mainAriaLabel={_("HP Smart Storage")}>
             {/* Compact plugin header: this page renders inside the Cockpit shell,
                 so no sidebar/masthead chrome of its own. */}
-            <PageSection variant="secondary">
+            <PageSection isFilled={false} className="hpssa-page-header">
                 <Flex
                     justifyContent={{ default: 'justifyContentSpaceBetween' }}
                     alignItems={{ default: 'alignItemsCenter' }}
@@ -1025,7 +1036,7 @@ export const Application = () => {
             </PageSection>
 
             {!loading && !error && overview && (
-                <PageSection type="tabs" padding={{ default: 'noPadding' }}>
+                <PageSection isFilled={false} type="subnav" padding={{ default: 'noPadding' }}>
                     <Nav
                         variant="horizontal-subnav"
                         aria-label={_("Storage navigation")}
@@ -1041,14 +1052,14 @@ export const Application = () => {
                                     itemId={`ctrl-${c.slot}`}
                                     isActive={activeTab === `ctrl-${c.slot}`}
                                 >
-                                    <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
+                                    <Flex flexWrap={{ default: 'nowrap' }} spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
                                         <span>{c.name}</span>
                                         <StatusLabel status={c.status} />
                                     </Flex>
                                 </NavItem>
                             ))}
                             <NavItem itemId="commandlog" isActive={activeTab === 'commandlog'}>
-                                <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
+                                <Flex flexWrap={{ default: 'nowrap' }} spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
                                     <span>{_("Command log")}</span>
                                     {logCount > 0 && <Badge isRead>{logCount}</Badge>}
                                 </Flex>
