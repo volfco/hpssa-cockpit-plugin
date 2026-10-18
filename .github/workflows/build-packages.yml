@@ -33,7 +33,7 @@ jobs:
         run: make rpm
 
       - name: Upload RPM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: rpm
           path: '*.rpm'
@@ -48,9 +48,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      # node, npm, make, git, dpkg-dev and xz are preinstalled on the runner
+      # build-essential is a builtin dpkg build-depend (Dpkg::Vendor::Debian) and
+      # is no longer preinstalled on the runner image; node, npm, make, git, xz
+      # and dpkg-dev still are
       - name: Install packaging tooling
-        run: sudo apt-get update && sudo apt-get install -y debhelper
+        run: sudo apt-get update && sudo apt-get install -y debhelper build-essential
 
       # dist/ is gitignored, so build the bundle before packaging
       - name: Build bundle
@@ -70,7 +72,7 @@ jobs:
         run: mv ../*.deb .
 
       - name: Upload DEB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deb
           path: '*.deb'
@@ -87,12 +89,12 @@ jobs:
       contents: write
     steps:
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
 
       - name: Attach to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: dist/*
